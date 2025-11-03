@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced MLflow - Intelligent ML Experiment Tracking</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>Enhanced MLflow</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-link active" data-view="dashboard">Dashboard</button>
+                <button class="nav-link" data-view="experiments">Experiments</button>
+                <button class="nav-link" data-view="shap">SHAP Analysis</button>
+                <button class="nav-link" data-view="architecture">System Architecture</button>
+                <button class="nav-link" data-view="fairness">Fairness Analysis</button>
+            </nav>
+            <div class="nav-user">
+                <span class="user-greeting">Welcome, Ryan</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view active">
+            <div class="page-header">
+                <h2>Dashboard</h2>
+                <p class="page-subtitle">Overview of your ML experiments and model performance</p>
+            </div>
+
+            <!-- Key Metrics Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">📊</div>
+                    <div class="metric-content">
+                        <h3>Total Experiments</h3>
+                        <div class="metric-value">20</div>
+                        <div class="metric-change positive">+3 this week</div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">✅</div>
+                    <div class="metric-content">
+                        <h3>Success Rate</h3>
+                        <div class="metric-value">85%</div>
+                        <div class="metric-change positive">+5% from last month</div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-content">
+                        <h3>Avg Duration</h3>
+                        <div class="metric-value">146s</div>
+                        <div class="metric-change negative">-12s improvement</div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-content">
+                        <h3>Best Accuracy</h3>
+                        <div class="metric-value">90.2%</div>
+                        <div class="metric-change positive">RandomForest_Titanic_3</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="dashboard-charts">
+                <div class="chart-section">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Experiment Success Rate Over Time</h3>
+                            <div class="chart-container" style="position: relative; height: 300px;">
+                                <canvas id="successRateChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-section">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Model Performance Distribution</h3>
+                            <div class="chart-container" style="position: relative; height: 300px;">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Experiments Table -->
+            <div class="recent-experiments">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Recent Experiments</h3>
+                        <div class="table-container">
+                            <table class="experiments-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Status</th>
+                                        <th>Model</th>
+                                        <th>Dataset</th>
+                                        <th>Accuracy</th>
+                                        <th>Duration</th>
+                                        <th>User</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-experiments-tbody">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHAP Analysis View -->
+        <div id="shap-view" class="view">
+            <div class="page-header">
+                <h2>🔍 SHAP Analysis Dashboard</h2>
+                <p class="page-subtitle">Model explainability and feature interpretation using SHAP values</p>
+            </div>
+
+            <div class="shap-content">
+                <!-- MLflow Connection Settings -->
+                <div class="card shap-connection-card">
+                    <div class="card__body">
+                        <h3>📊 MLflow Connection Settings</h3>
+                        <div class="shap-settings-grid">
+                            <div class="form-group">
+                                <label class="form-label">MLflow Tracking URI</label>
+                                <input type="text" class="form-control" id="mlflow-tracking-uri" value="http://localhost:5000" placeholder="http://localhost:5000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Experiment Name</label>
+                                <input type="text" class="form-control" id="experiment-name-input" placeholder="Enter experiment name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Select Run</label>
+                                <select class="form-control" id="run-selector">
+                                    <option value="">Select a run...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn--primary" onclick="loadModel()">Load Model</button>
+                            </div>
+                        </div>
+                        
+                        <div id="model-status" class="model-status hidden">
+                            <div class="status-indicator">
+                                <span class="status-icon">✅</span>
+                                <span class="status-text">Model loaded successfully</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Upload Section -->
+                <div class="card shap-upload-card">
+                    <div class="card__body">
+                        <h3>📁 Sample Data Upload</h3>
+                        <div class="file-upload-area" id="file-upload-area">
+                            <div class="upload-icon">📤</div>
+                            <div class="upload-text">
+                                <p class="upload-title">Upload CSV file for SHAP analysis</p>
+                                <p class="upload-subtitle">Drag and drop your file here or click to browse</p>
+                            </div>
+                            <input type="file" id="file-input" accept=".csv" class="file-input hidden">
+                        </div>
+                        
+                        <div id="data-preview" class="data-preview hidden">
+                            <h4>Data Preview</h4>
+                            <div class="table-container">
+                                <table class="data-preview-table" id="data-preview-table">
+                                    <!-- Will be populated by JavaScript -->
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHAP Analysis Controls -->
+                <div class="card shap-controls-card">
+                    <div class="card__body">
+                        <h3>🎛️ SHAP Analysis Controls</h3>
+                        <div class="shap-controls-grid">
+                            <div class="form-group">
+                                <label class="form-label">Analysis Type</label>
+                                <select class="form-control" id="shap-analysis-type">
+                                    <option value="summary">Summary Plot</option>
+                                    <option value="bar">Bar Plot</option>
+                                    <option value="waterfall">Waterfall Plot</option>
+                                    <option value="force">Force Plot</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Sample Index (for Force Plot)</label>
+                                <input type="number" class="form-control" id="sample-index" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Features</label>
+                                <input type="number" class="form-control" id="max-features" value="10" min="1" max="20">
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn--primary" onclick="generateShapAnalysis()">🔍 Generate SHAP Analysis</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHAP Visualizations -->
+                <div class="shap-visualizations grid-2">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>🎯 SHAP Summary Plot</h3>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <canvas id="shap-summary-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>💧 SHAP Force Plot</h3>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <canvas id="shap-force-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHAP Values Table -->
+                <div class="card">
+                    <div class="card__body">
+                        <h3>📋 SHAP Values Details</h3>
+                        <div class="table-container">
+                            <table class="shap-values-table" id="shap-values-table">
+                                <thead>
+                                    <tr>
+                                        <th>Feature</th>
+                                        <th>SHAP Value</th>
+                                        <th>Feature Value</th>
+                                        <th>Contribution</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Architecture View -->
+        <div id="architecture-view" class="view">
+            <div class="page-header">
+                <h2>🏗️ System Architecture</h2>
+                <p class="page-subtitle">Enhanced MLflow system components and data flow</p>
+            </div>
+
+            <div class="architecture-content">
+                <!-- Architecture Overview -->
+                <div class="card architecture-overview">
+                    <div class="card__body">
+                        <h3>Architecture Overview</h3>
+                        <p class="architecture-description">
+                            The Enhanced MLflow system extends the traditional MLflow architecture with advanced 
+                            explainability, fairness analysis, and intelligent experiment management capabilities.
+                        </p>
+                        <div class="architecture-diagram" id="architecture-diagram">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Component Details -->
+                <div class="architecture-components">
+                    <div class="component-grid">
+                        <div class="component-card user-interface">
+                            <div class="component-icon">🖥️</div>
+                            <h4>Enhanced UI Layer</h4>
+                            <p>Modern React-based interface with advanced visualizations, interactive charts, and intelligent filtering capabilities.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">React</span>
+                                <span class="tech-tag">Chart.js</span>
+                                <span class="tech-tag">Material-UI</span>
+                            </div>
+                        </div>
+
+                        <div class="component-card api-layer">
+                            <div class="component-icon">🔗</div>
+                            <h4>API Gateway</h4>
+                            <p>RESTful API layer with enhanced endpoints for explainability, fairness metrics, and advanced experiment management.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">FastAPI</span>
+                                <span class="tech-tag">GraphQL</span>
+                                <span class="tech-tag">WebSockets</span>
+                            </div>
+                        </div>
+
+                        <div class="component-card explainability">
+                            <div class="component-icon">🔍</div>
+                            <h4>Explainability Engine</h4>
+                            <p>Advanced model interpretation using SHAP, LIME, and custom explainability algorithms for comprehensive model understanding.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">SHAP</span>
+                                <span class="tech-tag">LIME</span>
+                                <span class="tech-tag">Captum</span>
+                            </div>
+                        </div>
+
+                        <div class="component-card fairness">
+                            <div class="component-icon">⚖️</div>
+                            <h4>Fairness Monitor</h4>
+                            <p>Real-time bias detection and fairness metrics calculation with automated alerts and recommendation systems.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">Fairlearn</span>
+                                <span class="tech-tag">AIF360</span>
+                                <span class="tech-tag">What-If Tool</span>
+                            </div>
+                        </div>
+
+                        <div class="component-card mlflow-core">
+                            <div class="component-icon">🎯</div>
+                            <h4>MLflow Core</h4>
+                            <p>Enhanced MLflow tracking server with extended metadata storage, artifact management, and experiment versioning.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">MLflow</span>
+                                <span class="tech-tag">PostgreSQL</span>
+                                <span class="tech-tag">MinIO</span>
+                            </div>
+                        </div>
+
+                        <div class="component-card data-storage">
+                            <div class="component-icon">🗄️</div>
+                            <h4>Data Storage</h4>
+                            <p>Scalable storage solution for experiments, models, artifacts, and enhanced metadata including explainability results.</p>
+                            <div class="component-tech">
+                                <span class="tech-tag">S3</span>
+                                <span class="tech-tag">Redis</span>
+                                <span class="tech-tag">Elasticsearch</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Flow Visualization -->
+                <div class="card">
+                    <div class="card__body">
+                        <h3>📊 System Data Flow</h3>
+                        <div class="chart-container" style="position: relative; height: 400px;">
+                            <canvas id="dataFlowChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technology Stack -->
+                <div class="card">
+                    <div class="card__body">
+                        <h3>🛠️ Technology Stack Distribution</h3>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="techStackChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiments View -->
+        <div id="experiments-view" class="view">
+            <div class="page-header">
+                <h2>Experiments</h2>
+                <div class="page-actions">
+                    <button class="btn btn--primary" onclick="window.compareMode = !window.compareMode; updateCompareMode()">
+                        Compare Mode
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="filters-section">
+                <div class="card">
+                    <div class="card__body">
+                        <div class="filters-grid">
+                            <div class="filter-group">
+                                <label class="form-label">Search</label>
+                                <input type="text" class="form-control" id="search-input" placeholder="Search experiments...">
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label">Status</label>
+                                <select class="form-control" id="status-filter">
+                                    <option value="">All Status</option>
+                                    <option value="FINISHED">Finished</option>
+                                    <option value="RUNNING">Running</option>
+                                    <option value="FAILED">Failed</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label">Model Type</label>
+                                <select class="form-control" id="model-filter">
+                                    <option value="">All Models</option>
+                                    <option value="RandomForest">Random Forest</option>
+                                    <option value="XGBoost">XGBoost</option>
+                                    <option value="LogisticRegression">Logistic Regression</option>
+                                    <option value="SVM">SVM</option>
+                                    <option value="DecisionTree">Decision Tree</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label">Dataset</label>
+                                <select class="form-control" id="dataset-filter">
+                                    <option value="">All Datasets</option>
+                                    <option value="Titanic">Titanic</option>
+                                    <option value="Iris">Iris</option>
+                                    <option value="Diabetes">Diabetes</option>
+                                    <option value="Wine Quality">Wine Quality</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Banner -->
+            <div id="compare-banner" class="compare-banner hidden">
+                <div class="compare-content">
+                    <span>Compare Mode: Select up to 4 experiments</span>
+                    <div class="compare-actions">
+                        <span id="selected-count">0 selected</span>
+                        <button class="btn btn--primary btn--sm" onclick="showComparison()">Compare Selected</button>
+                        <button class="btn btn--outline btn--sm" onclick="clearSelection()">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Experiments Table -->
+            <div class="card">
+                <div class="card__body">
+                    <div class="table-container">
+                        <table class="experiments-table">
+                            <thead>
+                                <tr>
+                                    <th id="compare-header" class="compare-column hidden">
+                                        <input type="checkbox" id="select-all">
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Model</th>
+                                    <th>Dataset</th>
+                                    <th>Accuracy</th>
+                                    <th>F1 Score</th>
+                                    <th>Duration</th>
+                                    <th>User</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="experiments-tbody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiment Detail View -->
+        <div id="experiment-detail-view" class="view">
+            <div class="page-header">
+                <button class="btn btn--outline" onclick="showView('experiments')">← Back to Experiments</button>
+                <h2 id="experiment-detail-title">Experiment Details</h2>
+            </div>
+
+            <div class="experiment-detail-content" id="experiment-detail-content">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Comparison View -->
+        <div id="comparison-view" class="view">
+            <div class="page-header">
+                <button class="btn btn--outline" onclick="showView('experiments')">← Back to Experiments</button>
+                <h2>Experiment Comparison</h2>
+            </div>
+
+            <div id="comparison-content">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Fairness Analysis View -->
+        <div id="fairness-view" class="view">
+            <div class="page-header">
+                <h2>Fairness Analysis Dashboard</h2>
+                <p class="page-subtitle">Analyze bias and fairness metrics across your experiments</p>
+            </div>
+
+            <div class="fairness-content">
+                <div class="fairness-overview">
+                    <div class="metric-card">
+                        <div class="metric-icon">⚖️</div>
+                        <div class="metric-content">
+                            <h3>Fairness Score</h3>
+                            <div class="metric-value">7.2/10</div>
+                            <div class="metric-change neutral">Moderate bias detected</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🎯</div>
+                        <div class="metric-content">
+                            <h3>Models with Fairness Data</h3>
+                            <div class="metric-value">6</div>
+                            <div class="metric-change positive">30% of total experiments</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">⚠️</div>
+                        <div class="metric-content">
+                            <h3>High Bias Models</h3>
+                            <div class="metric-value">2</div>
+                            <div class="metric-change negative">Require attention</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fairness-charts">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Fairness Metrics Comparison</h3>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <canvas id="fairnessChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fairness-recommendations">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Recommendations</h3>
+                            <div class="recommendations-list">
+                                <div class="recommendation-item">
+                                    <div class="recommendation-icon warning">⚠️</div>
+                                    <div class="recommendation-content">
+                                        <h4>High Demographic Parity Difference</h4>
+                                        <p>RandomForest_Wine Quality_7 shows significant demographic parity difference (0.123). Consider rebalancing training data.</p>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <div class="recommendation-icon error">🚨</div>
+                                    <div class="recommendation-content">
+                                        <h4>Equalized Odds Violation</h4>
+                                        <p>XGBoost_Wine Quality_4 has concerning equalized odds difference (-0.110). Review feature selection and preprocessing.</p>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <div class="recommendation-icon success">✅</div>
+                                    <div class="recommendation-content">
+                                        <h4>Good Fairness Performance</h4>
+                                        <p>LogisticRegression_Titanic_18 shows balanced fairness metrics across all dimensions.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

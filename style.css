@@ -969,6 +969,24 @@ select.form-control {
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-standard);
   background: var(--color-bg-2);
+  user-select: none;
+  position: relative;
+}
+
+.file-input.hidden {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.drag-over {
+  background-color: #f0f9ff !important;
+  border-color: #1FB8CD !important;
+  transform: scale(1.02);
+  transition: all 0.2s ease;
 }
 
 .file-upload-area:hover {
@@ -1881,4 +1899,22 @@ select.form-control {
   .feature-bar-fill {
     border: 1px solid var(--color-text);
   }
+}
+
+.file-upload-area {
+  cursor: pointer !important;
+  position: relative;
+  z-index: 1;
+}
+
+.file-upload-area * {
+  pointer-events: none; /* Child elements don't intercept clicks */
+}
+
+.file-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: all; /* But the input itself can receive events */
 }

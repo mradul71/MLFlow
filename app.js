@@ -37,10 +37,10 @@ let compareMode = false;
 let charts = {};
 let currentModel = null;
 let uploadedData = null;
+let uploadedShapFile = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM Content Loaded - initializing application');
   initializeNavigation();
   initializeDashboard();
   initializeExperiments();
@@ -56,13 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
   window.loadModel = loadModel;
   window.generateShapAnalysis = generateShapAnalysis;
   window.switchFeatureTab = switchFeatureTab;
-  
-  console.log('Application initialized successfully');
 });
 
 // Navigation
 function initializeNavigation() {
-  console.log('Initializing navigation');
   const navLinks = document.querySelectorAll('.nav-link');
   
   navLinks.forEach(link => {
@@ -71,8 +68,6 @@ function initializeNavigation() {
     // Add new event listener
     link.addEventListener('click', handleNavClick);
   });
-  
-  console.log(`Added event listeners to ${navLinks.length} navigation links`);
 }
 
 function handleNavClick(e) {
@@ -80,7 +75,6 @@ function handleNavClick(e) {
   e.stopPropagation();
   
   const view = e.currentTarget.getAttribute('data-view');
-  console.log('Navigation clicked:', view, e.currentTarget);
   
   if (view) {
     showView(view);
@@ -90,7 +84,6 @@ function handleNavClick(e) {
 }
 
 function showView(viewName) {
-  console.log('Showing view:', viewName);
   
   // Hide all views
   document.querySelectorAll('.view').forEach(view => {
@@ -101,7 +94,6 @@ function showView(viewName) {
   const targetView = document.getElementById(`${viewName}-view`);
   if (targetView) {
     targetView.classList.add('active');
-    console.log(`Successfully showed view: ${viewName}`);
   } else {
     console.error(`Could not find view element: ${viewName}-view`);
     return;
@@ -137,14 +129,12 @@ function showView(viewName) {
 
 // SHAP Analysis functionality
 function initializeShap() {
-  console.log('Initializing SHAP view');
   setupShapEventListeners();
   populateRunSelector();
   generateDefaultShapVisualizations();
 }
 
 function setupShapEventListeners() {
-  console.log('Setting up SHAP event listeners');
   
   // File upload
   const fileInput = document.getElementById('file-input');
@@ -164,8 +154,6 @@ function setupShapEventListeners() {
     fileUploadArea.addEventListener('drop', handleFileDrop);
     fileUploadArea.addEventListener('dragleave', handleDragLeave);
     fileInput.addEventListener('change', handleFileSelect);
-    
-    console.log('File upload event listeners added');
   } else {
     console.error('File upload elements not found');
   }
@@ -175,13 +163,11 @@ function setupShapEventListeners() {
   if (experimentNameInput) {
     experimentNameInput.removeEventListener('input', updateRunSelector);
     experimentNameInput.addEventListener('input', updateRunSelector);
-    console.log('Experiment name input listener added');
   }
 }
 
 function handleUploadClick(e) {
   e.preventDefault();
-  console.log('Upload area clicked');
   const fileInput = document.getElementById('file-input');
   if (fileInput) {
     fileInput.click();
@@ -203,20 +189,17 @@ function handleFileDrop(e) {
   e.currentTarget.classList.remove('dragover');
   const files = e.dataTransfer.files;
   if (files.length > 0) {
-    handleFile(files[0]);
+    handleFileUpload(files[0]);
   }
 }
 
 function handleFileSelect(e) {
-  console.log('File selected:', e.target.files);
   if (e.target.files.length > 0) {
     handleFile(e.target.files[0]);
   }
 }
 
 function handleFile(file) {
-  console.log('Processing file:', file.name);
-  
   if (!file.name.endsWith('.csv')) {
     alert('Please upload a CSV file');
     return;
@@ -232,7 +215,6 @@ function handleFile(file) {
     
     displayDataPreview(headers, rows);
     uploadedData = { headers, rows: lines.slice(1).map(line => line.split(',')) };
-    console.log('File processed successfully');
   };
   reader.readAsText(file);
 }
@@ -258,8 +240,6 @@ function displayDataPreview(headers, rows) {
         `).join('')}
       </tbody>
     `;
-    
-    console.log('Data preview displayed');
   }
 }
 
@@ -285,8 +265,6 @@ function updateRunSelector() {
     matchingRuns.map(exp => 
       `<option value="${exp.id}">${exp.name} (${exp.id})</option>`
     ).join('');
-    
-  console.log('Run selector updated with', matchingRuns.length, 'matching runs');
 }
 
 function populateRunSelector() {
@@ -298,12 +276,9 @@ function populateRunSelector() {
       .filter(exp => exp.status === 'FINISHED')
       .map(exp => `<option value="${exp.id}">${exp.name} (${exp.id})</option>`)
       .join('');
-      
-  console.log('Run selector populated');
 }
 
 function loadModel() {
-  console.log('Load model button clicked');
   const runId = document.getElementById('run-selector')?.value;
   const modelStatus = document.getElementById('model-status');
   
@@ -323,185 +298,1058 @@ function loadModel() {
         <span class="status-text">Model loaded successfully: ${currentModel.name}</span>
       </div>
     `;
-    console.log('Model loaded:', currentModel.name);
   }
 }
 
 function generateShapAnalysis() {
-  console.log('Generate SHAP analysis button clicked');
-  
   if (!currentModel) {
     alert('Please load a model first');
     return;
   }
   
-  if (!uploadedData) {
+  if (!uploadedShapFile) {
     alert('Please upload sample data first');
     return;
   }
   
   const analysisType = document.getElementById('shap-analysis-type')?.value || 'summary';
-  console.log('Generating SHAP analysis of type:', analysisType);
   
-  // Generate SHAP visualizations based on analysis type
+  // Generate SHAP visualizations using the uploaded file
   setTimeout(() => {
-    generateShapSummaryChart();
-    generateShapForceChart();
-    generateShapValuesTable();
-    console.log('SHAP analysis completed');
+    generateShapSummaryChart(uploadedShapFile);
+    generateShapDecisionChart(uploadedShapFile);
+    generateShapForceChart(uploadedShapFile);
+    generateShapValuesTable(uploadedShapFile);
   }, 500);
 }
 
 function generateDefaultShapVisualizations() {
   setTimeout(() => {
-    generateShapSummaryChart();
-    generateShapForceChart();
-    generateShapValuesTable();
-    console.log('Default SHAP visualizations generated');
+    // Check if a file has been uploaded
+    if (uploadedShapFile) {
+      // Use the uploaded file
+      generateShapSummaryChart(uploadedShapFile);
+      generateShapDecisionChart(uploadedShapFile);
+      generateShapForceChart(uploadedShapFile);
+      generateShapValuesTable(uploadedShapFile);
+    } else {
+      // Try to fetch from path (if you have a default file)
+      // Or show a message to upload a file
+      console.log('No file uploaded yet. Please upload a CSV file.');
+      
+      // Optionally, you can create empty/placeholder charts here
+      // or just leave them empty until a file is uploaded
+    }
   }, 500);
 }
 
-function generateShapSummaryChart() {
-  const ctx = document.getElementById('shap-summary-chart');
-  if (!ctx) return;
+// SHAP Summary Chart - Standard SHAP Summary Plot
+async function generateShapSummaryChart(file) {
+  const container = document.getElementById('shap-summary-chart');
+  if (!container) return;
   
-  // Mock SHAP summary data
-  const features = ['petal_width', 'sepal_length', 'sepal_width', 'petal_length'];
-  const shapValues = [0.4234, -0.2145, 0.1876, 0.3456];
-  
-  if (charts.shapSummary) {
-    charts.shapSummary.destroy();
-  }
-  
-  charts.shapSummary = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: features,
-      datasets: [{
-        label: 'SHAP Values',
-        data: shapValues.map(Math.abs),
-        backgroundColor: shapValues.map(val => val >= 0 ? '#1FB8CD' : '#B4413C'),
-        borderColor: shapValues.map(val => val >= 0 ? '#1FB8CD' : '#B4413C'),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Mean |SHAP Value|'
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          display: false
-        },
-        title: {
-          display: true,
-          text: 'SHAP Summary Plot - Feature Importance'
-        }
+  try {
+    let fileData;
+    
+    if (file instanceof File) {
+      fileData = await file.text();
+    } else if (typeof file === 'string') {
+      const response = await fetch(file);
+      fileData = await response.text();
+    } else {
+      throw new Error('Invalid file input. Expected File object or file path string.');
+    }
+    
+    const parsed = Papa.parse(fileData, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      transformHeader: header => header.trim()
+    });
+    
+    if (parsed.errors.length > 0) {
+      console.error('CSV parsing errors:', parsed.errors);
+      throw new Error('Failed to parse CSV file');
+    }
+    
+    const data = parsed.data;
+    const headers = Object.keys(data[0] || {});
+    
+    // Get numeric feature columns (exclude 'species')
+    const features = headers.filter(h => {
+      const firstValue = data[0][h];
+      return typeof firstValue === 'number' || (!isNaN(parseFloat(firstValue)) && h.toLowerCase() !== 'species');
+    });
+    
+    // Calculate SHAP values (using normalized deviation from mean as proxy)
+    const shapData = {};
+    features.forEach(feature => {
+      const values = data.map(row => parseFloat(row[feature])).filter(v => !isNaN(v));
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      const std = Math.sqrt(values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length);
+      
+      shapData[feature] = data.map(row => {
+        const val = parseFloat(row[feature]);
+        const shapValue = std > 0 ? (val - mean) / std * 0.1 : 0; // Scaled SHAP value
+        const featureValue = val;
+        const species = row.species ? row.species.toLowerCase() : 'setosa';
+        
+        return { shapValue, featureValue, species };
+      });
+    });
+    
+    // Calculate mean absolute SHAP value for sorting
+    const featureImportance = features.map(f => {
+      const meanAbsShap = shapData[f].reduce((sum, d) => sum + Math.abs(d.shapValue), 0) / shapData[f].length;
+      return { feature: f, importance: meanAbsShap };
+    });
+    
+    // Sort by importance (descending)
+    featureImportance.sort((a, b) => b.importance - a.importance);
+    const sortedFeatures = featureImportance.map(f => f.feature);
+    
+    // Color mapping for species (representing feature value - high to low)
+    const getColor = (featureValue, feature) => {
+      const values = data.map(row => parseFloat(row[feature])).filter(v => !isNaN(v));
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const normalized = (featureValue - min) / (max - min);
+      
+      // Color gradient: low (blue) to high (pink/red)
+      if (normalized > 0.66) return '#E91E63'; // High - Pink
+      if (normalized > 0.33) return '#9C27B0'; // Medium - Purple
+      return '#2196F3'; // Low - Blue
+    };
+    
+    // Create scatter datasets for each feature with vertical jitter
+    const datasets = [];
+    sortedFeatures.forEach((feature, idx) => {
+      const points = shapData[feature].map(d => {
+        // Add random vertical jitter to prevent overlap (-0.3 to +0.3)
+        const jitter = (Math.random() - 0.5) * 0.6;
+        
+        return {
+          x: d.shapValue,
+          y: idx + jitter,
+          backgroundColor: getColor(d.featureValue, feature),
+          borderColor: getColor(d.featureValue, feature)
+        };
+      });
+      
+      datasets.push({
+        label: feature,
+        data: points,
+        backgroundColor: points.map(p => p.backgroundColor),
+        borderColor: points.map(p => p.borderColor),
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        showLine: false
+      });
+    });
+    
+    // Destroy existing chart
+    if (charts.shapSummary) {
+      charts.shapSummary.destroy();
+    }
+    
+    // Get or create canvas
+    let canvas = container;
+    if (container.tagName !== 'CANVAS') {
+      canvas = container.querySelector('canvas') || document.createElement('canvas');
+      if (!canvas.parentElement) {
+        container.innerHTML = '';
+        container.appendChild(canvas);
       }
     }
-  });
-}
-
-function generateShapForceChart() {
-  const ctx = document.getElementById('shap-force-chart');
-  if (!ctx) return;
-  
-  // Mock SHAP force plot data (waterfall chart)
-  const features = ['Base Value', 'petal_width', 'sepal_length', 'sepal_width', 'petal_length', 'Prediction'];
-  const values = [0.5234, 0.4234, -0.2145, 0.1876, 0.3456, 0.8765];
-  
-  if (charts.shapForce) {
-    charts.shapForce.destroy();
-  }
-  
-  charts.shapForce = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: features,
-      datasets: [{
-        label: 'SHAP Force Plot',
-        data: values,
-        backgroundColor: values.map((val, idx) => {
-          if (idx === 0 || idx === values.length - 1) return '#ECEBD5';
-          return val >= 0 ? '#1FB8CD' : '#B4413C';
-        }),
-        borderColor: values.map((val, idx) => {
-          if (idx === 0 || idx === values.length - 1) return '#ECEBD5';
-          return val >= 0 ? '#1FB8CD' : '#B4413C';
-        }),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: false,
+    
+    // Create the chart
+    charts.shapSummary = new Chart(canvas, {
+      type: 'scatter',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'SHAP value (impact on model output)',
+              font: { size: 12 }
+            },
+            grid: { color: '#e0e0e0' }
+          },
+          y: {
+            type: 'linear',
+            min: -0.5,
+            max: sortedFeatures.length - 0.5,
+            ticks: {
+              stepSize: 1,
+              callback: function(value) {
+                const idx = Math.round(value);
+                return sortedFeatures[idx] || '';
+              },
+              font: { size: 11 }
+            },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false },
           title: {
             display: true,
-            text: 'Output'
+            text: 'SHAP Summary Plot',
+            font: { size: 16, weight: 'bold' }
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const idx = Math.round(context[0].parsed.y);
+                return sortedFeatures[idx] || '';
+              },
+              label: function(context) {
+                return `SHAP value: ${context.parsed.x.toFixed(4)}`;
+              }
+            }
           }
         }
-      },
-      plugins: {
-        legend: {
-          display: false
-        },
-        title: {
-          display: true,
-          text: 'SHAP Force Plot - Individual Prediction Explanation'
-        }
       }
-    }
-  });
+    });
+    
+    return charts.shapSummary;
+    
+  } catch (error) {
+    console.error('Error generating SHAP summary chart:', error);
+    throw error;
+  }
 }
 
-function generateShapValuesTable() {
+async function generateShapDecisionChart(file) {
+  const ctx = document.getElementById('shap-decision-chart');
+  
+  if (!ctx) {
+    console.error('shap-decision-chart element not found');
+    return;
+  }
+  
+  // Ensure canvas is visible and has proper display
+  ctx.style.display = 'block';
+  ctx.style.width = '100%';
+  ctx.style.height = '100%';
+  
+  if (ctx.offsetWidth === 0 || ctx.offsetHeight === 0) {
+    console.error('Canvas has zero dimensions even after styling!');
+    console.error('Width:', ctx.offsetWidth, 'Height:', ctx.offsetHeight);
+    // Wait a tick for layout
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  try {
+    let fileData;
+    
+    // Handle different input types
+    if (file instanceof File) {
+      fileData = await file.text();
+    } else if (typeof file === 'string') {
+      const response = await fetch(file);
+      fileData = await response.text();
+    } else {
+      throw new Error('Invalid file input. Expected File object or file path string.');
+    }
+    
+    // Parse CSV using PapaParse
+    const parsed = Papa.parse(fileData, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      transformHeader: header => header.trim()
+    });
+    
+    if (parsed.errors.length > 0) {
+      console.error('CSV parsing errors:', parsed.errors);
+      throw new Error('Failed to parse CSV file');
+    }
+    
+    const data = parsed.data;
+    const headers = Object.keys(data[0] || {});
+    
+    // Get numeric columns (excluding 'species' or other categorical columns)
+    const numericColumns = headers.filter(h => {
+      const firstValue = data[0][h];
+      return typeof firstValue === 'number' || (!isNaN(parseFloat(firstValue)) && h.toLowerCase() !== 'species');
+    });
+    
+    // Map species to class numbers
+    const speciesMap = {
+      'setosa': 0,
+      'versicolor': 1,
+      'virginica': 2
+    };
+    
+    // Calculate mean absolute SHAP values per feature to sort them
+    const featureMeans = {};
+    numericColumns.forEach(feature => {
+      const values = data.map(row => Math.abs(parseFloat(row[feature]) || 0));
+      featureMeans[feature] = values.reduce((sum, v) => sum + v, 0) / values.length;
+    });
+    
+    // Sort features by importance (descending)
+    const sortedFeatures = numericColumns.sort((a, b) => featureMeans[b] - featureMeans[a]);
+    
+    // Create decision plot using canvas
+    const canvas = ctx;
+    // Use explicit fallback sizes if offsetWidth/Height are 0
+    const containerWidth = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 800;
+    const containerHeight = canvas.offsetHeight || canvas.parentElement?.offsetHeight || 600;
+    
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      console.error('Could not get 2d context!');
+      return;
+    }
+    
+    // Clear canvas
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Chart dimensions
+    const margin = { top: 40, right: 150, bottom: 60, left: 120 };
+    const width = canvas.width - margin.left - margin.right;
+    const height = canvas.height - margin.top - margin.bottom;
+    
+    // Calculate cumulative SHAP values for each sample
+    const samples = data.map(row => {
+      const species = row.species ? row.species.toLowerCase() : 'setosa';
+      const classNum = speciesMap[species] || 0;
+      
+      let cumulative = 1.0; // Base value
+      const path = [{ feature: 'base', value: cumulative, class: classNum }];
+      
+      sortedFeatures.forEach(feature => {
+        const shapValue = parseFloat(row[feature]) || 0;
+        cumulative += shapValue;
+        path.push({ feature, value: cumulative, class: classNum });
+      });
+      
+      return { path, class: classNum };
+    });
+    
+    // Determine value range
+    const allValues = samples.flatMap(s => s.path.map(p => p.value));
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    
+    // Scales
+    const xScale = (val) => margin.left + ((val - minValue) / (maxValue - minValue)) * width;
+    const yScale = (idx) => margin.top + (idx / sortedFeatures.length) * height;
+    
+    // Colors for classes
+    const classColors = ['#1E88E5', '#9C27B0', '#E91E63'];
+    
+    // Draw horizontal grid lines and feature labels
+    context.strokeStyle = '#e0e0e0';
+    context.lineWidth = 1;
+    context.setLineDash([2, 2]);
+    context.font = '14px Arial';
+    context.fillStyle = '#e0e0e0';
+    context.textAlign = 'right';
+    context.textBaseline = 'middle';
+    
+    sortedFeatures.forEach((feature, idx) => {
+      const y = yScale(idx);
+      context.beginPath();
+      context.moveTo(margin.left, y);
+      context.lineTo(canvas.width - margin.right, y);
+      context.stroke();
+      
+      context.fillText(feature, margin.left - 10, y);
+    });
+    
+    context.setLineDash([]);
+    
+    // Draw x-axis
+    context.strokeStyle = '#e0e0e0';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(margin.left, canvas.height - margin.bottom);
+    context.lineTo(canvas.width - margin.right, canvas.height - margin.bottom);
+    context.stroke();
+    
+    // X-axis label
+    context.font = '13px Arial';
+    context.fillStyle = '#e0e0e0';
+    context.textAlign = 'center';
+    context.fillText('Model output value', margin.left + width / 2, canvas.height - margin.bottom + 35);
+    
+    // X-axis ticks
+    context.font = '12px Arial';
+    context.textBaseline = 'top';
+    for (let i = 0; i <= 8; i++) {
+      const val = minValue + (i / 8) * (maxValue - minValue);
+      const x = xScale(val);
+      context.fillText(val.toFixed(2), x, canvas.height - margin.bottom + 5);
+    }
+    
+    // Color scale bar at top
+    const barHeight = 20;
+    const barY = 10;
+    const gradient = context.createLinearGradient(margin.left, 0, canvas.width - margin.right, 0);
+    gradient.addColorStop(0, classColors[0]);
+    gradient.addColorStop(0.5, classColors[1]);
+    gradient.addColorStop(1, classColors[2]);
+    
+    context.fillStyle = gradient;
+    context.fillRect(margin.left, barY, width, barHeight);
+    
+    // Draw sample paths
+    samples.forEach(sample => {
+      const color = classColors[sample.class];
+      context.strokeStyle = color;
+      context.lineWidth = 1.5;
+      context.globalAlpha = 0.6;
+      
+      context.beginPath();
+      sample.path.forEach((point, idx) => {
+        const x = xScale(point.value);
+        const y = idx === 0 ? yScale(-0.5) : yScale(idx - 1);
+        
+        if (idx === 0) {
+          context.moveTo(x, y);
+        } else {
+          context.lineTo(x, y);
+        }
+      });
+      context.stroke();
+    });
+    
+    context.globalAlpha = 1.0;
+    
+    // Store for cleanup
+    charts.shapDecision = { 
+      destroy: () => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+    return charts.shapDecision;
+    
+  } catch (error) {
+    console.error('Error generating SHAP decision chart:', error);
+    throw error;
+  }
+}
+
+async function generateShapForceChart(file) {
+  let container = document.getElementById('shap-force-chart');
+  if (!container) {
+    console.error('Force chart container not found');
+    return;
+  }
+  
+  // If it's a canvas, we need to replace it with a div
+  if (container.tagName === 'CANVAS') {
+    const parent = container.parentElement;
+    const newContainer = document.createElement('div');
+    newContainer.id = 'shap-force-chart';
+    newContainer.style.width = '100%';
+    newContainer.style.height = '100%';
+    parent.replaceChild(newContainer, container);
+    container = newContainer;
+  }
+  
+  try {
+    let fileData;
+    
+    if (file instanceof File) {
+      fileData = await file.text();
+    } else if (typeof file === 'string') {
+      const response = await fetch(file);
+      fileData = await response.text();
+    } else {
+      throw new Error('Invalid file input. Expected File object or file path string.');
+    }
+    
+    const parsed = Papa.parse(fileData, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      transformHeader: header => header.trim()
+    });
+    
+    if (parsed.errors.length > 0) {
+      console.error('CSV parsing errors:', parsed.errors);
+      throw new Error('Failed to parse CSV file');
+    }
+    
+    const data = parsed.data;
+    const headers = Object.keys(data[0] || {});
+    
+    // Get numeric columns (excluding 'species')
+    const numericColumns = headers.filter(h => {
+      const firstValue = data[0][h];
+      return typeof firstValue === 'number' || (!isNaN(parseFloat(firstValue)) && h.toLowerCase() !== 'species');
+    });
+    
+    // Calculate means
+    const means = {};
+    numericColumns.forEach(col => {
+      const vals = data.map(row => parseFloat(row[col])).filter(v => !isNaN(v));
+      means[col] = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+    });
+    
+    // Use first data row
+    const firstRow = data[0];
+    const baseValue = 1.0; // Starting base value
+    
+    // Calculate SHAP contributions
+    const contributions = numericColumns.map(col => {
+      const value = parseFloat(firstRow[col]) || 0;
+      const contribution = (value - means[col]) * 0.1; // Scale factor
+      return { feature: col, value: contribution, featureValue: value };
+    });
+    
+    // Sort by contribution magnitude
+    contributions.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+    
+    // Build cumulative values for waterfall
+    let cumulative = baseValue;
+    const positions = [{ x: baseValue, label: `base value`, isBase: true }];
+    
+    contributions.forEach(contrib => {
+      const start = cumulative;
+      cumulative += contrib.value;
+      positions.push({
+        x: cumulative,
+        label: `${contrib.feature} = ${contrib.featureValue.toFixed(1)}`,
+        start: start,
+        end: cumulative,
+        value: contrib.value,
+        isPositive: contrib.value >= 0
+      });
+    });
+    
+    const finalValue = cumulative;
+    
+    // Create custom HTML visualization
+    container.innerHTML = '';
+    container.style.position = 'relative';
+    container.style.height = '180px';
+    container.style.padding = '50px 30px 30px 30px';
+    container.style.backgroundColor = '#f8f9fa';
+    container.style.borderRadius = '8px';
+    
+    // Create SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.position = 'absolute';
+    svg.style.top = '50px';
+    svg.style.left = '30px';
+    svg.style.right = '30px';
+    svg.style.bottom = '30px';
+    
+    // Calculate scale with better spacing
+    const minVal = Math.min(baseValue, finalValue, ...positions.map(p => p.x));
+    const maxVal = Math.max(baseValue, finalValue, ...positions.map(p => p.x));
+    const range = maxVal - minVal || 1;
+    const padding = range * 0.15;
+    const scale = (val) => {
+      const normalized = (val - minVal + padding) / (range + 2 * padding);
+      return 5 + normalized * 90; // Use 5-95% of width for better spacing
+    };
+    
+    // Draw axis
+    const axisY = 70;
+    const axisLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    axisLine.setAttribute('x1', '5%');
+    axisLine.setAttribute('x2', '95%');
+    axisLine.setAttribute('y1', axisY);
+    axisLine.setAttribute('y2', axisY);
+    axisLine.setAttribute('stroke', '#aaa');
+    axisLine.setAttribute('stroke-width', '1.5');
+    svg.appendChild(axisLine);
+    
+    // Draw fewer, cleaner axis ticks
+    const numTicks = 6;
+    for (let i = 0; i <= numTicks; i++) {
+      const val = minVal - padding + (range + 2 * padding) * (i / numTicks);
+      const x = 5 + (90 * i / numTicks);
+      
+      const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      tick.setAttribute('x1', `${x}%`);
+      tick.setAttribute('x2', `${x}%`);
+      tick.setAttribute('y1', axisY);
+      tick.setAttribute('y2', axisY + 4);
+      tick.setAttribute('stroke', '#aaa');
+      tick.setAttribute('stroke-width', '1');
+      svg.appendChild(tick);
+      
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', `${x}%`);
+      text.setAttribute('y', axisY + 16);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#666');
+      text.setAttribute('font-size', '11');
+      text.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+      text.textContent = val.toFixed(2);
+      svg.appendChild(text);
+    }
+    
+    // Draw force plot arrows with improved styling
+    let prevX = scale(baseValue);
+    
+    positions.forEach((pos, idx) => {
+      if (idx === 0) {
+        // Base value marker - cleaner style
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', `${prevX}%`);
+        label.setAttribute('y', axisY - 45);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('fill', '#555');
+        label.setAttribute('font-size', '12');
+        label.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+        label.textContent = 'base value';
+        svg.appendChild(label);
+        
+        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        marker.setAttribute('x1', `${prevX}%`);
+        marker.setAttribute('x2', `${prevX}%`);
+        marker.setAttribute('y1', axisY - 38);
+        marker.setAttribute('y2', axisY);
+        marker.setAttribute('stroke', '#888');
+        marker.setAttribute('stroke-width', '2');
+        marker.setAttribute('stroke-dasharray', '2,2');
+        svg.appendChild(marker);
+      } else {
+        const currentX = scale(pos.x);
+        const color = pos.isPositive ? '#ff0d57' : '#1e88e5';
+        const width = Math.abs(currentX - prevX);
+        
+        // Only show arrow if width is significant
+        if (width > 2) {
+          // Arrow body with gradient
+          const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          const arrowHeight = 22;
+          const arrowHeadWidth = 6;
+          
+          const points = pos.isPositive
+            ? `${prevX},${axisY - arrowHeight} ${currentX - arrowHeadWidth},${axisY - arrowHeight} ${currentX},${axisY - arrowHeight / 2} ${currentX - arrowHeadWidth},${axisY} ${prevX},${axisY}`
+            : `${prevX},${axisY - arrowHeight} ${currentX + arrowHeadWidth},${axisY - arrowHeight} ${currentX},${axisY - arrowHeight / 2} ${currentX + arrowHeadWidth},${axisY} ${prevX},${axisY}`;
+          
+          arrow.setAttribute('points', points);
+          arrow.setAttribute('fill', color);
+          arrow.setAttribute('opacity', '0.85');
+          arrow.setAttribute('stroke', color);
+          arrow.setAttribute('stroke-width', '0.5');
+          svg.appendChild(arrow);
+          
+          // Feature label - only if there's enough space
+          if (width > 8) {
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', `${(prevX + currentX) / 2}%`);
+            label.setAttribute('y', axisY - arrowHeight - 3);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('fill', '#444');
+            label.setAttribute('font-size', '10');
+            label.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+            label.textContent = pos.label;
+            svg.appendChild(label);
+          }
+        }
+        
+        prevX = currentX;
+      }
+    });
+    
+    // Final prediction marker with better styling
+    const finalX = scale(finalValue);
+    
+    const finalLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    finalLabel.setAttribute('x', `${finalX}%`);
+    finalLabel.setAttribute('y', axisY - 45);
+    finalLabel.setAttribute('text-anchor', 'middle');
+    finalLabel.setAttribute('fill', '#222');
+    finalLabel.setAttribute('font-size', '13');
+    finalLabel.setAttribute('font-weight', 'bold');
+    finalLabel.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+    finalLabel.textContent = `f(x) = ${finalValue.toFixed(2)}`;
+    svg.appendChild(finalLabel);
+    
+    const finalMarker = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    finalMarker.setAttribute('x1', `${finalX}%`);
+    finalMarker.setAttribute('x2', `${finalX}%`);
+    finalMarker.setAttribute('y1', axisY - 38);
+    finalMarker.setAttribute('y2', axisY);
+    finalMarker.setAttribute('stroke', '#222');
+    finalMarker.setAttribute('stroke-width', '2.5');
+    svg.appendChild(finalMarker);
+    
+    // Legend with improved styling
+    const legend = document.createElement('div');
+    legend.style.position = 'absolute';
+    legend.style.top = '15px';
+    legend.style.right = '30px';
+    legend.style.fontSize = '12px';
+    legend.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    legend.innerHTML = `
+      <div style="display: flex; gap: 12px; align-items: center; background: white; padding: 6px 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div><span style="color: #ff0d57; font-weight: 600;">higher</span></div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 24px; height: 10px; background: linear-gradient(to right, #1e88e5, #ff0d57); border-radius: 2px;"></div>
+          <span style="color: #555; font-weight: 500;">f(x)</span>
+        </div>
+        <div><span style="color: #1e88e5; font-weight: 600;">lower</span></div>
+      </div>
+    `;
+    
+    container.appendChild(svg);
+    container.appendChild(legend);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('Error generating SHAP force chart:', error);
+    throw error;
+  }
+}
+
+async function generateShapBarChart(file) {
+  const ctx = document.getElementById('shap-bar-chart');
+  if (!ctx) return;
+  
+  try {
+    let fileData;
+    
+    // Handle different input types
+    if (file instanceof File) {
+      fileData = await file.text();
+    } else if (typeof file === 'string') {
+      const response = await fetch(file);
+      fileData = await response.text();
+    } else {
+      throw new Error('Invalid file input. Expected File object or file path string.');
+    }
+    
+    // Parse CSV using PapaParse
+    const parsed = Papa.parse(fileData, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      transformHeader: header => header.trim()
+    });
+    
+    if (parsed.errors.length > 0) {
+      console.error('CSV parsing errors:', parsed.errors);
+      throw new Error('Failed to parse CSV file');
+    }
+    
+    const data = parsed.data;
+    const headers = Object.keys(data[0] || {});
+    
+    // Get numeric columns (excluding 'species' or other categorical columns)
+    const numericColumns = headers.filter(h => {
+      const firstValue = data[0][h];
+      return typeof firstValue === 'number' || (!isNaN(parseFloat(firstValue)) && h.toLowerCase() !== 'species');
+    });
+    
+    // Map species to class numbers
+    const speciesMap = {
+      'setosa': 0,
+      'versicolor': 1,
+      'virginica': 2
+    };
+    
+    // Calculate mean absolute SHAP values per feature per class
+    const featureClassValues = {};
+    
+    numericColumns.forEach(feature => {
+      featureClassValues[feature] = { 0: [], 1: [], 2: [] };
+      
+      data.forEach(row => {
+        const species = row.species ? row.species.toLowerCase() : 'setosa';
+        const classNum = speciesMap[species] || 0;
+        const value = parseFloat(row[feature]);
+        
+        if (!isNaN(value)) {
+          featureClassValues[feature][classNum].push(Math.abs(value));
+        }
+      });
+    });
+    
+    // Calculate mean for each feature-class combination
+    const featureMeans = {};
+    numericColumns.forEach(feature => {
+      featureMeans[feature] = {};
+      for (let c = 0; c < 3; c++) {
+        const values = featureClassValues[feature][c];
+        const mean = values.length > 0 
+          ? values.reduce((sum, v) => sum + v, 0) / values.length 
+          : 0;
+        featureMeans[feature][c] = mean;
+      }
+    });
+    
+    // Sort features by total impact (sum across all classes)
+    const sortedFeatures = numericColumns.sort((a, b) => {
+      const sumA = featureMeans[a][0] + featureMeans[a][1] + featureMeans[a][2];
+      const sumB = featureMeans[b][0] + featureMeans[b][1] + featureMeans[b][2];
+      return sumB - sumA; // Descending order
+    });
+    
+    // Create datasets for each class
+    const datasets = [
+      {
+        label: 'Class 0',
+        data: sortedFeatures.map(f => featureMeans[f][0]),
+        backgroundColor: '#1E88E5', // Blue
+        borderColor: '#1E88E5',
+        borderWidth: 0
+      },
+      {
+        label: 'Class 1',
+        data: sortedFeatures.map(f => featureMeans[f][1]),
+        backgroundColor: '#E91E63', // Pink/Magenta
+        borderColor: '#E91E63',
+        borderWidth: 0
+      },
+      {
+        label: 'Class 2',
+        data: sortedFeatures.map(f => featureMeans[f][2]),
+        backgroundColor: '#9E9D24', // Olive/Yellow-green
+        borderColor: '#9E9D24',
+        borderWidth: 0
+      }
+    ];
+    
+    // Destroy existing chart if it exists
+    if (charts.shapBar) {
+      charts.shapBar.destroy();
+    }
+    
+    // Create stacked horizontal bar chart
+    charts.shapBar = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sortedFeatures,
+        datasets: datasets
+      },
+      options: {
+        indexAxis: 'y', // Horizontal bars
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'mean(|SHAP value|) (average impact on model output magnitude)',
+              font: { size: 12 }
+            },
+            grid: {
+              color: '#e0e0e0'
+            }
+          },
+          y: {
+            stacked: true,
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: { size: 13 }
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'right',
+            labels: {
+              font: { size: 12 },
+              boxWidth: 40,
+              padding: 15
+            }
+          },
+          title: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.dataset.label || '';
+                const value = context.parsed.x.toFixed(4);
+                return `${label}: ${value}`;
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    return charts.shapBar;
+    
+  } catch (error) {
+    console.error('Error generating SHAP bar chart:', error);
+    throw error;
+  }
+}
+
+async function generateShapValuesTable(file) {
   const table = document.getElementById('shap-values-table');
   if (!table) return;
   
-  // Mock SHAP values data
-  const shapData = [
-    { feature: 'petal_width', shap_value: 0.4234, feature_value: 2.4, contribution: 'High Positive' },
-    { feature: 'sepal_length', shap_value: -0.2145, feature_value: 5.1, contribution: 'Negative' },
-    { feature: 'sepal_width', shap_value: 0.1876, feature_value: 3.5, contribution: 'Positive' },
-    { feature: 'petal_length', shap_value: 0.3456, feature_value: 1.4, contribution: 'Positive' }
-  ];
-  
-  const tbody = table.querySelector('tbody');
-  if (tbody) {
+  try {
+    let fileData;
+    
+    // Handle different input types
+    if (file instanceof File) {
+      fileData = await file.text();
+    } else if (typeof file === 'string') {
+      const response = await fetch(file);
+      fileData = await response.text();
+    } else {
+      throw new Error('Invalid file input. Expected File object or file path string.');
+    }
+    
+    // Parse CSV using PapaParse
+    const parsed = Papa.parse(fileData, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      transformHeader: header => header.trim()
+    });
+    
+    if (parsed.errors.length > 0) {
+      console.error('CSV parsing errors:', parsed.errors);
+      throw new Error('Failed to parse CSV file');
+    }
+    
+    const data = parsed.data;
+    const headers = Object.keys(data[0] || {});
+    
+    // Check if this is pre-formatted SHAP data or raw data
+    const hasShapColumns = headers.some(h => 
+      (h.toLowerCase() === 'feature' || h.toLowerCase() === 'shap_value')
+    );
+    
+    let shapData;
+    
+    if (hasShapColumns) {
+      // Pre-formatted SHAP data with feature, shap_value, feature_value columns
+      shapData = data.map(row => {
+        const shapValue = parseFloat(row.shap_value || row['SHAP Value'] || row.shap || 0);
+        const featureValue = parseFloat(row.feature_value || row['Feature Value'] || row.value || 0);
+        
+        // Determine contribution category
+        let contribution;
+        const absValue = Math.abs(shapValue);
+        if (shapValue >= 0.3) {
+          contribution = 'High Positive';
+        } else if (shapValue > 0) {
+          contribution = 'Positive';
+        } else if (shapValue <= -0.3) {
+          contribution = 'High Negative';
+        } else {
+          contribution = 'Negative';
+        }
+        
+        return {
+          feature: row.feature || row.Feature || '',
+          shap_value: shapValue,
+          feature_value: featureValue,
+          contribution: row.contribution || contribution
+        };
+      });
+    } else {
+      // Raw data format - calculate SHAP-like values from first row
+      const numericColumns = headers.filter(h => {
+        const firstValue = data[0][h];
+        return typeof firstValue === 'number' || !isNaN(parseFloat(firstValue));
+      });
+      
+      // Calculate means and standard deviations
+      const stats = {};
+      numericColumns.forEach(col => {
+        const vals = data.map(row => parseFloat(row[col])).filter(v => !isNaN(v));
+        const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+        const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+        const stdDev = Math.sqrt(variance);
+        stats[col] = { mean, stdDev };
+      });
+      
+      // Use first row to generate SHAP-like values
+      const firstRow = data[0];
+      
+      shapData = numericColumns.map(col => {
+        const featureValue = parseFloat(firstRow[col]) || 0;
+        const { mean, stdDev } = stats[col];
+        
+        // Calculate normalized deviation as SHAP value
+        const shapValue = stdDev > 0 ? (featureValue - mean) / stdDev : 0;
+        
+        // Determine contribution category
+        let contribution;
+        if (shapValue >= 0.5) {
+          contribution = 'High Positive';
+        } else if (shapValue > 0) {
+          contribution = 'Positive';
+        } else if (shapValue <= -0.5) {
+          contribution = 'High Negative';
+        } else {
+          contribution = 'Negative';
+        }
+        
+        return {
+          feature: col,
+          shap_value: shapValue,
+          feature_value: featureValue,
+          contribution: contribution
+        };
+      });
+      
+      // Sort by absolute SHAP value (descending)
+      shapData.sort((a, b) => Math.abs(b.shap_value) - Math.abs(a.shap_value));
+    }
+    
+    // Find or create tbody
+    let tbody = table.querySelector('tbody');
+    if (!tbody) {
+      tbody = document.createElement('tbody');
+      table.appendChild(tbody);
+    }
+    
+    // Find max absolute SHAP value for scaling the bars
+    const maxAbsShap = Math.max(...shapData.map(row => Math.abs(row.shap_value)));
+    
+    // Populate table
     tbody.innerHTML = shapData.map(row => `
       <tr>
         <td>${row.feature}</td>
         <td class="${row.shap_value >= 0 ? 'shap-value-positive' : 'shap-value-negative'}">
           ${row.shap_value.toFixed(4)}
         </td>
-        <td>${row.feature_value}</td>
+        <td>${row.feature_value.toFixed(2)}</td>
         <td>
           ${row.contribution}
           <div class="contribution-bar">
             <div class="${row.shap_value >= 0 ? 'contribution-positive' : 'contribution-negative'}" 
-                 style="width: ${Math.abs(row.shap_value) * 100}%"></div>
+                 style="width: ${maxAbsShap > 0 ? (Math.abs(row.shap_value) / maxAbsShap * 100) : 0}%"></div>
           </div>
         </td>
       </tr>
     `).join('');
+    
+    return shapData;
+    
+  } catch (error) {
+    console.error('Error generating SHAP values table:', error);
+    throw error;
   }
 }
 
 // Architecture functionality
 function initializeArchitecture() {
-  console.log('Initializing architecture view');
   renderArchitectureDiagram();
   setTimeout(() => {
     createDataFlowChart();
@@ -512,7 +1360,6 @@ function initializeArchitecture() {
 function renderArchitectureDiagram() {
   const diagramContainer = document.getElementById('architecture-diagram');
   if (!diagramContainer) {
-    console.log('Architecture diagram container not found');
     return;
   }
   
@@ -890,8 +1737,6 @@ function showComparison() {
 
 // Feature analysis tabs functionality
 function switchFeatureTab(tabName, experimentId) {
-  console.log('Switching feature tab:', tabName, 'for experiment:', experimentId);
-  
   // Hide all tab contents for this experiment
   document.querySelectorAll(`#experiment-${experimentId} .feature-tab-content`).forEach(content => {
     content.classList.remove('active');
@@ -916,7 +1761,6 @@ function switchFeatureTab(tabName, experimentId) {
 
 // Experiment detail view
 function showExperimentDetail(experimentId) {
-  console.log('Showing experiment detail for:', experimentId);
   const experiment = experimentsData.experiments.find(exp => exp.id === experimentId);
   if (!experiment) {
     console.error('Experiment not found:', experimentId);
@@ -1086,8 +1930,6 @@ function showExperimentDetail(experimentId) {
       createDetailShapCharts(experimentId);
     }, 100);
   }
-  
-  console.log('Experiment detail view created successfully');
 }
 
 function createFeatureImportanceChart(experimentId) {
@@ -1372,4 +2214,91 @@ function createFairnessChart() {
       }
     }
   });
+}
+
+
+// file upload code
+// Simple direct approach - no fancy stuff
+function initializeFileUpload() {
+  const fileUploadArea = document.getElementById('file-upload-area');
+  const fileInput = document.getElementById('file-input');
+  
+  if (!fileUploadArea || !fileInput) {
+    alert('ERROR: Elements not found!');
+    return;
+  }
+  
+  // Direct click handler - simplest possible
+  fileUploadArea.onclick = function() {
+    fileInput.click();
+  };
+  
+  // File selected handler
+  fileInput.onchange = function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+}
+
+async function handleFileUpload(file) {
+  
+  if (!file.name.endsWith('.csv')) {
+    alert('Please upload a CSV file');
+    return;
+  }
+  
+  try {
+    const fileUploadArea = document.getElementById('file-upload-area');
+    
+    // Show loading
+    fileUploadArea.innerHTML = `
+      <div class="upload-icon">⏳</div>
+      <div class="upload-text">
+        <p class="upload-title">Processing file...</p>
+      </div>
+    `;
+    
+    // STORE THE FILE GLOBALLY
+    uploadedShapFile = file;
+
+    await generateShapSummaryChart(file);
+    await generateShapDecisionChart(file);
+    await generateShapForceChart(file);
+    await generateShapBarChart(file);
+    await generateShapValuesTable(file);
+    
+    // Show success AFTER charts are generated
+    fileUploadArea.innerHTML = `
+      <div class="upload-icon">✅</div>
+      <div class="upload-text">
+        <p class="upload-title">File uploaded successfully!</p>
+        <p class="upload-subtitle">${file.name}</p>
+        <p class="upload-subtitle" style="color: var(--color-success); margin-top: 8px;">✓ All 5 charts generated</p>
+      </div>
+    `;
+    
+  } catch (error) {
+    console.error('=== ERROR IN FILE UPLOAD ===');
+    console.error('Error:', error);
+    console.error('Error stack:', error.stack);
+    alert('Failed to process file: ' + error.message);
+    
+    fileUploadArea.innerHTML = `
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">
+        <p class="upload-title">Upload CSV file for SHAP analysis</p>
+        <p class="upload-subtitle">Drag and drop your file here or click to browse</p>
+      </div>
+    `;
+    initializeFileUpload();
+  }
+}
+
+// IMPORTANT: Only call this once!
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeFileUpload);
+} else {
+  initializeFileUpload();
 }

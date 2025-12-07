@@ -218,22 +218,45 @@
                 </div>
 
                 <!-- SHAP Visualizations -->
-                <div class="shap-visualizations grid-2">
-                    <div class="card">
-                        <div class="card__body">
+                <!-- SHAP Visualizations -->
+                <div class="shap-visualizations" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Left Column: Summary Plot (Full Height) -->
+                    <div class="card" style="height: 100%;">
+                        <div class="card__body" style="height: 100%; display: flex; flex-direction: column;">
                             <h3>🎯 SHAP Summary Plot</h3>
-                            <div class="chart-container" style="position: relative; height: 400px;">
+                            <div class="chart-container" style="position: relative; flex: 1; min-height: 820px;">
                                 <canvas id="shap-summary-chart"></canvas>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="card">
-                        <div class="card__body">
-                            <h3>💧 SHAP Force Plot</h3>
-                            <div class="chart-container" style="position: relative; height: 400px;">
-                                <canvas id="shap-force-chart"></canvas>
+                    <!-- Right Column: decision Plot + Bar Chart Stacked -->
+                    <div style="display: flex; flex-direction: column; gap: 20px; height: 100%;">
+                        <div class="card" style="flex: 1;">
+                            <div class="card__body" style="height: 100%; display: flex; flex-direction: column;">
+                                <h3>💧 SHAP Decision Plot</h3>
+                                <div class="chart-container" style="position: relative; flex: 1; min-height: 400px;">
+                                    <canvas id="shap-decision-chart"></canvas>
+                                </div>
                             </div>
+                        </div>
+                        
+                        <div class="card" style="flex: 1;">
+                            <div class="card__body" style="height: 100%; display: flex; flex-direction: column;">
+                                <h3>📊 SHAP Bar Chart</h3>
+                                <div class="chart-container" style="position: relative; flex: 1; min-height: 400px;">
+                                    <canvas id="shap-bar-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card__body">
+                        <h3>💧 SHAP Force Plot</h3>
+                        <div class="chart-container" style="position: relative; flex: 1; min-height: 100px;">
+                            <canvas id="shap-force-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -578,6 +601,7 @@
         </div>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

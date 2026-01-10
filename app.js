@@ -1,3 +1,5 @@
+
+
 // Application Data - Using the provided experiment data with Ryan instead of Alice
 const experimentsData = {
   "experiments": [
@@ -29,11 +31,27 @@ const experimentsData = {
   }
 };
 
+const experimentRunsData = {
+  "609376690833434304": [ // Default experiment
+    {"run_id": "run_001", "run_name": "LogisticRegression_Iris_1", "status": "FINISHED", "user": "Ryan", "model_type": "LogisticRegression", "dataset": "Iris", "start_time": "2025-08-20 08:47:30", "duration": "87s", "metrics": {"accuracy": 0.7623, "precision": 0.778, "recall": 0.7375, "f1_score": 0.7584}},
+    {"run_id": "run_002", "run_name": "DecisionTree_Diabetes_2", "status": "FINISHED", "user": "Bob", "model_type": "DecisionTree", "dataset": "Diabetes", "start_time": "2025-08-26 11:23:14", "duration": "183s", "metrics": {"accuracy": 0.8324, "precision": 0.8156, "recall": 0.8654, "f1_score": 0.8226}},
+    {"run_id": "run_003", "run_name": "RandomForest_Titanic_3", "status": "FINISHED", "user": "Charlie", "model_type": "RandomForest", "dataset": "Titanic", "start_time": "2025-08-28 15:39:58", "duration": "244s", "metrics": {"accuracy": 0.9018, "precision": 0.9095, "recall": 0.8723, "f1_score": 0.899}}
+  ],
+  "1": [
+    {"run_id": "run_004", "run_name": "XGBoost_Wine Quality_4", "status": "FINISHED", "user": "Diana", "model_type": "XGBoost", "dataset": "Wine Quality", "start_time": "2025-09-01 09:15:42", "duration": "156s", "metrics": {"accuracy": 0.8913, "precision": 0.8734, "recall": 0.9156, "f1_score": 0.8876}},
+    {"run_id": "run_005", "run_name": "SVM_Iris_5", "status": "FINISHED", "user": "Eva", "model_type": "SVM", "dataset": "Iris", "start_time": "2025-09-03 14:28:17", "duration": "91s", "metrics": {"accuracy": 0.8241, "precision": 0.8456, "recall": 0.7923, "f1_score": 0.8167}}
+  ],
+  "2": [
+    {"run_id": "run_006", "run_name": "LogisticRegression_Diabetes_6", "status": "FINISHED", "user": "Ryan", "model_type": "LogisticRegression", "dataset": "Diabetes", "start_time": "2025-09-05 12:10:33", "duration": "76s", "metrics": {"accuracy": 0.7923, "precision": 0.8134, "recall": 0.7656, "f1_score": 0.7845}},
+    {"run_id": "run_007", "run_name": "RandomForest_Wine Quality_7", "status": "RUNNING", "user": "Bob", "model_type": "RandomForest", "dataset": "Wine Quality", "start_time": "2025-09-07 16:45:22", "duration": "N/A", "metrics": {"accuracy": null, "precision": null, "recall": null, "f1_score": null}}
+  ]
+};
+
 // Global state
-let currentView = 'dashboard';
+let currentView = 'experiments';
 let filteredExperiments = [...experimentsData.experiments];
 let selectedExperiments = [];
-let compareMode = false;
+let compareMode = true;
 let charts = {};
 let currentModel = null;
 let uploadedData = null;
@@ -42,7 +60,6 @@ let uploadedShapFile = null;
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
   initializeNavigation();
-  initializeDashboard();
   initializeExperiments();
   setupEventListeners();
   
@@ -84,7 +101,6 @@ function handleNavClick(e) {
 }
 
 function showView(viewName) {
-  
   // Hide all views
   document.querySelectorAll('.view').forEach(view => {
     view.classList.remove('active');
@@ -114,9 +130,7 @@ function showView(viewName) {
   currentView = viewName;
   
   // Initialize view-specific content
-  if (viewName === 'dashboard') {
-    initializeDashboard();
-  } else if (viewName === 'experiments') {
+  if (viewName === 'experiments') {
     renderExperimentsTable();
   } else if (viewName === 'architecture') {
     initializeArchitecture();
@@ -344,8 +358,8 @@ function generateDefaultShapVisualizations() {
 }
 
 // SHAP Summary Chart - Standard SHAP Summary Plot
-async function generateShapSummaryChart(file) {
-  const container = document.getElementById('shap-summary-chart');
+async function generateShapSummaryChart(file, containerId = 'shap-summary-chart') {
+  const container = document.getElementById(containerId);
   if (!container) return;
   
   try {
@@ -523,11 +537,10 @@ async function generateShapSummaryChart(file) {
   }
 }
 
-async function generateShapDecisionChart(file) {
-  const ctx = document.getElementById('shap-decision-chart');
-  
+async function generateShapDecisionChart(file, ctxId = 'shap-decision-chart') {
+  const ctx = document.getElementById(ctxId);
   if (!ctx) {
-    console.error('shap-decision-chart element not found');
+    console.error(`${ctxId} element not found`);
     return;
   }
   
@@ -740,8 +753,8 @@ async function generateShapDecisionChart(file) {
   }
 }
 
-async function generateShapForceChart(file) {
-  let container = document.getElementById('shap-force-chart');
+async function generateShapForceChart(file, containerId = 'shap-force-chart') {
+  let container = document.getElementById(containerId);
   if (!container) {
     console.error('Force chart container not found');
     return;
@@ -1014,8 +1027,8 @@ async function generateShapForceChart(file) {
   }
 }
 
-async function generateShapBarChart(file) {
-  const ctx = document.getElementById('shap-bar-chart');
+async function generateShapBarChart(file, ctxId = 'shap-bar-chart') {
+  const ctx = document.getElementById(ctxId);
   if (!ctx) return;
   
   try {
@@ -1195,8 +1208,8 @@ async function generateShapBarChart(file) {
   }
 }
 
-async function generateShapValuesTable(file) {
-  const table = document.getElementById('shap-values-table');
+async function generateShapValuesTable(file, tableId = 'shap-values-table') {
+  const table = document.getElementById(tableId);
   if (!table) return;
   
   try {
@@ -1364,37 +1377,115 @@ function renderArchitectureDiagram() {
   }
   
   diagramContainer.innerHTML = `
-    <div class="diagram-layer">
-      <div class="diagram-tier">
-        <div class="diagram-component ui">
-          <span class="component-emoji">🖥️</span>
-          <div class="component-name">Enhanced UI</div>
+    <div class="flowchart-diagram">
+      <!-- Top Layer: Model Training -->
+      <div class="flow-row">
+        <div class="flow-node training">
+          <div class="node-header">
+            <span class="node-icon">🤖</span>
+            <span class="node-title">ML Model Training</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• Train models locally</div>
+            <div class="node-detail">• Compute metrics</div>
+            <div class="node-detail">• Generate SHAP values</div>
+          </div>
         </div>
       </div>
       
-      <div class="diagram-tier">
-        <div class="diagram-component api">
-          <span class="component-emoji">🔗</span>
-          <div class="component-name">API Gateway</div>
-        </div>
-        <div class="diagram-component explainability">
-          <span class="component-emoji">🔍</span>
-          <div class="component-name">Explainability Engine</div>
-        </div>
-        <div class="diagram-component fairness">
-          <span class="component-emoji">⚖️</span>
-          <div class="component-name">Fairness Monitor</div>
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-label">Log experiments</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- Second Layer: MLflow Server -->
+      <div class="flow-row">
+        <div class="flow-node mlflow">
+          <div class="node-header">
+            <span class="node-icon">🎯</span>
+            <span class="node-title">MLflow Tracking Server</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• localhost:8080</div>
+            <div class="node-detail">• Store metadata (params, metrics)</div>
+            <div class="node-detail">• Manage artifacts (models, CSVs)</div>
+          </div>
         </div>
       </div>
       
-      <div class="diagram-tier">
-        <div class="diagram-component mlflow">
-          <span class="component-emoji">🎯</span>
-          <div class="component-name">MLflow Core</div>
+      <div class="flow-split">
+        <div class="split-line left"></div>
+        <div class="split-line right"></div>
+      </div>
+      
+      <!-- Third Layer: API & Storage -->
+      <div class="flow-row split">
+        <div class="flow-node api">
+          <div class="node-header">
+            <span class="node-icon">🔗</span>
+            <span class="node-title">REST API</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• /experiments/search</div>
+            <div class="node-detail">• /runs/get</div>
+            <div class="node-detail">• /artifacts/list</div>
+          </div>
         </div>
-        <div class="diagram-component storage">
-          <span class="component-emoji">🗄️</span>
-          <div class="component-name">Data Storage</div>
+        
+        <div class="flow-node storage">
+          <div class="node-header">
+            <span class="node-icon">🗄️</span>
+            <span class="node-title">Artifact Storage</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• Model files (.pkl)</div>
+            <div class="node-detail">• SHAP CSVs</div>
+            <div class="node-detail">• Visualizations</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-merge">
+        <div class="merge-line left"></div>
+        <div class="merge-line right"></div>
+        <div class="arrow-label">Fetch data</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- Fourth Layer: Web Interface -->
+      <div class="flow-row">
+        <div class="flow-node ui">
+          <div class="node-header">
+            <span class="node-icon">🖥️</span>
+            <span class="node-title">Web Interface</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• Fetch via REST API</div>
+            <div class="node-detail">• Parse SHAP CSVs</div>
+            <div class="node-detail">• Generate visualizations</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-label">Render UI</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- Bottom Layer: User -->
+      <div class="flow-row">
+        <div class="flow-node user">
+          <div class="node-header">
+            <span class="node-icon">👤</span>
+            <span class="node-title">User Dashboard</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• View experiments & runs</div>
+            <div class="node-detail">• Analyze SHAP plots</div>
+            <div class="node-detail">• Compare models</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1475,15 +1566,6 @@ function createTechStackChart() {
       }
     }
   });
-}
-
-// Dashboard functionality
-function initializeDashboard() {
-  renderRecentExperiments();
-  setTimeout(() => {
-    createSuccessRateChart();
-    createPerformanceChart();
-  }, 100);
 }
 
 function renderRecentExperiments() {
@@ -1610,31 +1692,413 @@ function createPerformanceChart() {
 // Experiments functionality
 function initializeExperiments() {
   filteredExperiments = [...experimentsData.experiments];
+  showView("experiments")
   renderExperimentsTable();
 }
 
-function renderExperimentsTable() {
+async function getAllExperimentsFromAPI() {
+  const MLFLOW_TRACKING_URI = 'http://localhost:8080';
+  
+  try {
+    const response = await fetch(`${MLFLOW_TRACKING_URI}/api/2.0/mlflow/experiments/search`, {
+      method: 'POST',  // ← This is the key change!
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_results: 1000 })
+    });
+    const data = await response.json();
+    return data.experiments || [];
+  } catch (error) {
+    console.error('Error fetching experiments:', error.message);
+    return [];
+  }
+}
+
+async function getExperimentDetailsFromAPI(experimentId) {
+  const MLFLOW_TRACKING_URI = 'http://localhost:8080';
+  
+  try {
+    const response = await fetch(
+      `${MLFLOW_TRACKING_URI}/api/2.0/mlflow/runs/search`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ experiment_ids: [experimentId] })
+      }
+    );
+    const data = await response.json();
+    return data.runs || [];
+  } catch (error) {
+    console.error('Error fetching experiments:', error.message);
+    return [];
+  }
+}
+
+async function getRunDetailsFromAPI(runId) {
+  const MLFLOW_TRACKING_URI = 'http://localhost:8080';
+  try {
+    const url = new URL(`${MLFLOW_TRACKING_URI}/api/2.0/mlflow/runs/get`);
+    url.searchParams.set('run_id', runId);
+    const response = await fetch(url.toString(), { method: 'GET' });
+    const data = await response.json();
+    return data.run || null;
+  } catch (error) {
+    console.error('Error fetching run details:', error.message);
+    return null;
+  }
+}
+
+async function getRunArtifactsFromAPI(runId, path = '') {
+  const MLFLOW_TRACKING_URI = 'http://localhost:8080';
+  try {
+    const url = new URL(`${MLFLOW_TRACKING_URI}/api/2.0/mlflow/artifacts/list`);
+    url.searchParams.set('run_id', runId);
+    if (path) url.searchParams.set('path', path);
+
+    const response = await fetch(url.toString(), { method: 'GET' });
+    const data = await response.json();
+    console.log("dataaaaa", data)
+    return data.files || [];
+  } catch (error) {
+    console.error('Error fetching artifacts:', error.message);
+    return [];
+  }
+}
+
+let currentRunId = null;
+let runMetricsChart = null;
+
+async function showRunDetail(runId) {
+  const run = await getRunDetailsFromAPI(runId);
+  if (!run) {
+    console.error('Run not found:', runId);
+    return;
+  }
+  currentRunId = runId;
+
+  const runName = run.info.run_name || run.info.run_id;
+  const titleEl = document.getElementById('run-detail-title');
+  if (titleEl) titleEl.textContent = `Run: ${runName}`;
+
+  const toPairs = (objOrArr) => Array.isArray(objOrArr) ? objOrArr.map(i => [i.key, i.value]) : Object.entries(objOrArr || {});
+  const paramsPairs = toPairs(run.data.params);
+  const metricsPairs = toPairs(run.data.metrics);
+  const tagsPairs = toPairs(run.data.tags);
+
+  // Overview tab
+  const overviewEl = document.getElementById('run-overview-tab');
+  if (overviewEl) {
+    overviewEl.innerHTML = `
+      <div class="card" style="margin-top: var(--space-24);">
+        <div class="card__body">
+          <h3>About this run</h3>
+          <div class="info-grid">
+            <div><strong>Experiment ID:</strong> ${run.info.experiment_id}</div>
+            <div><strong>Status:</strong> <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span></div>
+            <div><strong>Run ID:</strong> ${run.info.run_id}</div>
+            <div><strong>Duration:</strong> ${run.info.end_time ? (((run.info.end_time - run.info.start_time)/1000).toFixed(1) + 's') : 'Running'}</div>
+            <div><strong>Source:</strong> ${run.data.tags?.find?.(t => t.key === 'mlflow.source.name')?.value || '--'}</div>
+            <div><strong>Created by:</strong> ${run.info.user_id || '--'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: var(--space-24);">
+        <div class="card__body">
+          <h3>Metrics</h3>
+          <div style="margin-bottom: var(--space-12);">
+            <input id="run-metrics-search" class="form-control" placeholder="Search metrics" oninput="filterRunTableRows('run-metrics-table', this.value)">
+          </div>
+          ${metricsPairs.length === 0 ? '<p>No metrics logged</p>' : `
+          <div class="table-container">
+            <table id="run-metrics-table" class="experiments-table">
+              <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+              <tbody>
+                ${metricsPairs.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: var(--space-24);">
+        <div class="card__body">
+          <h3>Parameters</h3>
+          <div style="margin-bottom: var(--space-12);">
+            <input id="run-params-search" class="form-control" placeholder="Search parameters" oninput="filterRunTableRows('run-params-table', this.value)">
+          </div>
+          ${paramsPairs.length === 0 ? '<p>No parameters logged</p>' : `
+          <div class="table-container">
+            <table id="run-params-table" class="experiments-table">
+              <thead><tr><th>Key</th><th>Value</th></tr></thead>
+              <tbody>
+                ${paramsPairs.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  // Model metrics tab with chart
+  const metricsEl = document.getElementById('run-metrics-tab');
+  if (metricsEl) {
+    const numericMetrics = metricsPairs
+      .map(([k,v]) => [k, Number(v)])
+      .filter(([_,v]) => !Number.isNaN(v));
+
+    metricsEl.innerHTML = `
+      <div class="card">
+        <div class="card__body">
+          <div style="display:flex; align-items:center; gap: var(--space-12);">
+            <h3 style="margin:0;">Model metrics</h3>
+            <label style="flex:1;"><input id="run-metrics-search-2" class="form-control" placeholder="Search metric charts" oninput="filterRunTableRows('run-metrics-table-2', this.value)"></label>
+          </div>
+          ${numericMetrics.length === 0 ? '<p>No numeric metrics available</p>' : `
+          <div class="chart-container" style="position: relative; height: 300px; margin-top: var(--space-16);">
+            <canvas id="runMetricsChart"></canvas>
+          </div>`}
+          <div class="table-container" style="margin-top: var(--space-16);">
+            <table id="run-metrics-table-2" class="experiments-table">
+              <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+              <tbody>
+                ${metricsPairs.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const chartEl = document.getElementById('runMetricsChart');
+    if (chartEl && numericMetrics.length > 0) {
+      if (runMetricsChart) runMetricsChart.destroy();
+      runMetricsChart = new Chart(chartEl, {
+        type: 'bar',
+        data: {
+          labels: numericMetrics.map(([k]) => k),
+          datasets: [{
+            label: 'Metric value',
+            data: numericMetrics.map(([_,v]) => v),
+            backgroundColor: '#1FB8CD',
+            borderColor: '#1FB8CD',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  }
+
+  // Artifacts tab initial load
+  await renderRunArtifacts(runId, '');
+
+  showView('run-detail');
+  switchRunTab('overview');
+}
+
+function filterRunTableRows(tableId, query) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return;
+  const q = (query || '').toLowerCase();
+  tbody.querySelectorAll('tr').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+async function renderRunArtifacts(runId, path = '') {
+  const artifactsEl = document.getElementById('run-artifacts-tab');
+  if (!artifactsEl) return;
+
+  const files = await getRunArtifactsFromAPI(runId, path);
+  const parentPath = path.split('/').slice(0, -1).join('/');
+  const hasParent = !!path;
+
+  const PROXY_BASE = 'http://localhost:8080';
+  const previewUrlBase = `${PROXY_BASE}/get-artifact`;
+
+  artifactsEl.innerHTML = `
+    <div class="card">
+      <div class="card__body">
+        <div style="display:flex; gap: var(--space-24);">
+          <div style="flex: 0 0 300px;">
+            <h3>Artifacts ${path ? `— ${path}` : ''}</h3>
+            <div class="artifact-actions" style="margin-bottom: var(--space-12);">
+              ${hasParent ? `<button class="btn btn--sm btn--outline" onclick="loadArtifactPath('${runId}', '${parentPath}')">⬆️ Up</button>` : ''}
+            </div>
+            ${files.length === 0 ? '<p>No artifacts found</p>' : `
+              <ul>
+                ${files.map(file => `
+                  <li style="margin-bottom: 8px;">
+                    ${file.is_dir
+                      ? `<button class="btn btn--sm btn--outline" onclick="loadArtifactPath('${runId}', '${file.path}')">${file.path.split('/').pop()}/</button>`
+                      : `<button class="btn btn--sm btn--primary" onclick="previewArtifact('${runId}', '${file.path}')">${file.path.split('/').pop()}</button>
+                         <a class="btn btn--sm btn--outline" href="${previewUrlBase}?run_uuid=${runId}&path=${encodeURIComponent(file.path)}" target="_blank" rel="noopener">Download</a>`
+                    }
+                  </li>
+                `).join('')}
+              </ul>
+            `}
+          </div>
+          <div style="flex: 1;">
+            <h3>Preview</h3>
+            <div id="artifact-preview" style="border: 1px solid var(--color-border); height: 360px;">
+              <div style="display:flex; align-items:center; justify-content:center; height:100%; color: var(--color-text-secondary);">
+                Select a file to preview
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function loadArtifactPath(runId, path) {
+  renderRunArtifacts(runId, path);
+}
+
+function previewArtifact(runId, path) {
+  const previewEl = document.getElementById('artifact-preview');
+  const PROXY_BASE = 'http://localhost:8080';
+  const url = `${PROXY_BASE}/get-artifact?run_uuid=${runId}&path=${encodeURIComponent(path)}`;
+  if (previewEl) {
+    previewEl.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
+  }
+}
+
+function switchRunTab(tabName) {
+  ['run-overview-tab','run-metrics-tab','run-artifacts-tab','run-shap-tab'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+
+  const target = document.getElementById(
+    tabName === 'overview' ? 'run-overview-tab' :
+    tabName === 'metrics' ? 'run-metrics-tab' :
+    tabName === 'artifacts' ? 'run-artifacts-tab' :
+    'run-shap-tab'
+  );
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('#run-detail-view .feature-tab').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = Array.from(document.querySelectorAll('#run-detail-view .feature-tab'))
+    .find(b => b.textContent.toLowerCase().includes(tabName));
+  if (activeBtn) activeBtn.classList.add('active');
+
+  if (tabName === 'artifacts' && currentRunId) {
+    renderRunArtifacts(currentRunId);
+  } else if (tabName === 'shap' && currentRunId) {
+    renderRunShapTab(currentRunId);
+  }
+}
+
+// Find a CSV artifact path, searching up to 3 levels deep
+async function findCsvArtifactPath(runId, path = '', depth = 0) {
+  const entries = await getRunArtifactsFromAPI(runId, path);
+  const csv = entries.find(e => !e.is_dir && e.path.toLowerCase().endsWith('.csv'));
+  console.log(csv, "csv===>")
+  if (csv) return csv.path;
+  if (depth >= 3) return null;
+  for (const dir of entries.filter(e => e.is_dir)) {
+    const found = await findCsvArtifactPath(runId, dir.path, depth + 1);
+    console.log(found, "found===>")
+    if (found) return found;
+  }
+  return null;
+}
+
+async function renderRunShapTab(runId) {
+  const statusEl = document.getElementById('run-shap-status');
+  try {
+    if (statusEl) statusEl.textContent = 'Searching for CSV artifacts...';
+    const csvPath = await findCsvArtifactPath(runId, '');
+    if (!csvPath) {
+      if (statusEl) statusEl.textContent = 'No CSV artifact found in this run.';
+      return;
+    }
+
+    const csvUrl = await chooseWorkingArtifactUrl(runId, csvPath);
+    if (statusEl) statusEl.textContent = `Using artifact: ${csvPath}`;
+
+    await generateShapSummaryChart(csvUrl, 'run-shap-summary-chart');
+    await generateShapDecisionChart(csvUrl, 'run-shap-decision-chart');
+    await generateShapBarChart(csvUrl, 'run-shap-bar-chart');
+    await generateShapForceChart(csvUrl, 'run-shap-force-chart');
+    await generateShapValuesTable(csvUrl, 'run-shap-values-table');
+
+    if (statusEl) statusEl.textContent = 'SHAP analysis rendered successfully.';
+  } catch (err) {
+    console.error('Failed to render SHAP tab:', err);
+    if (statusEl) statusEl.textContent = `Failed to render SHAP analysis: ${err.message}`;
+  }
+}
+
+async function chooseWorkingArtifactUrl(runId, csvPath) {
+  const PROXY_BASE = 'http://localhost:8080';
+  const url = `${PROXY_BASE}/artifact-content?run_id=${runId}&path=${encodeURIComponent(csvPath)}`;
+  // simple reachability check (optional)
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    if (r.ok) return url;
+  } catch (_) { /* ignore */ }
+  throw new Error('Artifact content route unreachable');
+}
+
+async function renderExperimentsTable() {
   const tbody = document.getElementById('experiments-tbody');
   if (!tbody) return;
   
-  tbody.innerHTML = filteredExperiments.map(exp => `
-    <tr>
-      ${compareMode ? `<td class="compare-column"><input type="checkbox" class="compare-checkbox" value="${exp.id}" onchange="handleExperimentSelection(this)"></td>` : ''}
+  let experimentsData = await getAllExperimentsFromAPI()
+  tbody.innerHTML = experimentsData.map((exp, i) => `
+    <tr data-exp='${encodeURIComponent(JSON.stringify(exp))}'>
+      ${compareMode ? `
+        <td class="compare-column">
+          <input type="checkbox"
+                class="compare-checkbox"
+                value="${exp.experiment_id}"
+                onchange="handleExperimentSelection(this)">
+        </td>` : ''
+      }
       <td>
-        <a href="#" class="experiment-name" onclick="showExperimentDetail('${exp.id}'); return false;">${exp.name}</a>
+        <a href="#" class="experiment-name">${exp.name}</a>
       </td>
-      <td><span class="status-badge ${exp.status.toLowerCase()}">${exp.status}</span></td>
-      <td>${exp.model_type}</td>
-      <td>${exp.dataset}</td>
-      <td>${exp.metrics.accuracy ? (exp.metrics.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
-      <td>${exp.metrics.f1_score ? exp.metrics.f1_score.toFixed(3) : 'N/A'}</td>
-      <td>${exp.duration}</td>
-      <td>${exp.user}</td>
       <td>
-        <button class="btn btn--sm btn--outline" onclick="showExperimentDetail('${exp.id}')">View</button>
+        <span class="status-badge ${exp.lifecycle_stage.toLowerCase()}">
+          ${exp.lifecycle_stage}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn--sm btn--outline view-btn">View</button>
       </td>
     </tr>
   `).join('');
+
+  tbody.querySelectorAll('.experiment-name, .view-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault();
+  
+      const tr = e.target.closest('tr');
+      const exp = JSON.parse(decodeURIComponent(tr.dataset.exp));
+  
+      showExperimentDetail(exp);
+    });
+  });
+}
+
+function showComparisonAndGenerateReport() {
+  if (selectedExperiments.length < 2) {
+    alert('Please select at least 2 experiments to compare.');
+    return;
+  }
+  
+  renderComparisonView();
+  showView('comparison');
 }
 
 function setupEventListeners() {
@@ -1760,176 +2224,550 @@ function switchFeatureTab(tabName, experimentId) {
 }
 
 // Experiment detail view
-function showExperimentDetail(experimentId) {
-  const experiment = experimentsData.experiments.find(exp => exp.id === experimentId);
-  if (!experiment) {
-    console.error('Experiment not found:', experimentId);
+// Add this to your existing showExperimentDetail function
+
+function switchExperimentDetailTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('#experiment-detail-view .feature-tab-content').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // Show selected tab content
+    const tabContent = document.getElementById(`${tabName}-tab-content`);
+    if (tabContent) {
+        tabContent.classList.add('active');
+        
+        // If comparison tab is clicked, render the comparison
+        if (tabName === 'comparison') {
+            renderExperimentRunsComparison(window.currentExperimentId, window.currentExperimentRuns);
+        }
+    }
+
+    // Update tab button active state
+    document.querySelectorAll('#experiment-detail-view .feature-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = Array.from(document.querySelectorAll('#experiment-detail-view .feature-tab'))
+        .find(b => {
+            const text = b.textContent.toLowerCase().trim();
+            return text === tabName.toLowerCase();
+        });
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+}
+
+// Update showExperimentDetail to populate the runs tab
+async function showExperimentDetail(experiment) {
+    const runs = await getExperimentDetailsFromAPI(experiment.experiment_id);
+    console.log("Runs: ", runs)
+
+    if (!runs) {
+        console.error('Experiment not found:', experiment.experiment_id);
+        return;
+    }
+    
+    document.getElementById('experiment-detail-title').textContent = experiment.name;
+    
+    const content = document.getElementById('experiment-detail-content');
+    content.innerHTML = `
+        <div class="detail-section" style="margin-top: var(--space-32);">
+            <h3>Runs (${runs.length})</h3>
+            ${runs.length === 0 ? `
+                <p style="color: var(--color-text-secondary); padding: var(--space-24); text-align: center;">
+                    No runs found for this experiment
+                </p>
+            ` : `
+                <div class="card">
+                    <div class="card__body">
+                        <div class="table-container">
+                            <table class="experiments-table">
+                                <thead>
+                                    <tr>
+                                        <th>Run Name</th>
+                                        <th>Source</th>
+                                        <th>Status</th>
+                                        <th>Model Type</th>
+                                        <th>Dataset</th>
+                                        <th>User</th>
+                                        <th>Accuracy</th>
+                                        <th>Duration</th>
+                                        <th>Start Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${runs.map((run) => {
+                                        const metricsMap = Object.fromEntries(
+                                            (run.data.metrics || []).map(m => [m.key, m.value])
+                                        );
+                                        return `
+                                        <tr>
+                                            <td>
+                                                <a href="#" class="experiment-name" onclick="showRunDetail('${run.info.run_id}'); return false;">
+                                                    ${run.info.run_name}
+                                                </a>
+                                            </td>
+                                            <td>${run.data.tags && run.data.tags[2] ? run.data.tags[2].value : '--'}</td>
+                                            <td>
+                                                <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span>
+                                            </td>
+                                            <td>${run.data.params && run.data.params[0] ? run.data.params[0].value : '--'}</td>
+                                            <td>${run.dataset ? run.dataset : '--'}</td>
+                                            <td>${run.info.user_id}</td>
+                                            <td>${metricsMap.accuracy ? (metricsMap.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
+                                            <td>${((run.info.end_time-run.info.start_time) / 1000).toFixed(1)}s</td>
+                                            <td>${new Date(run.info.start_time).toLocaleString()}</td>
+                                            <td>
+                                                <button class="btn btn--sm btn--outline" onclick="showRunDetail('${run.info.run_id}')">
+                                                    View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `}).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+    
+    showView('experiment-detail');
+
+    // Store experiment ID and runs for comparison
+    window.currentExperimentId = experiment.experiment_id;
+    window.currentExperimentRuns = runs;
+}
+
+// Function to render comparison of all runs in an experiment
+function renderExperimentRunsComparison(experimentId, runs) {
+    const container = document.getElementById('experiment-comparison-content');
+    if (!container || !runs) {
+        console.error('Container or runs not found');
+        return;
+    }
+
+    const finishedRuns = runs.filter(r => r.info.status === 'FINISHED');
+
+    if (finishedRuns.length < 2) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="card__body">
+                    <p style="text-align: center; color: var(--color-text-secondary);">
+                        Need at least 2 finished runs to compare. Current finished runs: ${finishedRuns.length}
+                    </p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Extract metrics
+    const metrics = ['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'];
+    
+    // Helper to get metric value
+    const getMetricValue = (run, metricName) => {
+        const metric = run.data.metrics?.find(m => m.key === metricName);
+        return metric ? metric.value : null;
+    };
+
+    // Helper to get param value
+    const getParamValue = (run, paramName) => {
+        const param = run.data.params?.find(p => p.key === paramName);
+        return param ? param.value : null;
+    };
+
+    // Build metrics comparison table
+    let metricsHTML = '<div class="table-container"><table class="experiments-table"><thead><tr><th style="min-width: 150px;">Metric</th>';
+    metricsHTML += finishedRuns.map(run => `<th style="text-align: center;">${run.info.run_name}</th>`).join('');
+    metricsHTML += '</tr></thead><tbody>';
+
+    metrics.forEach(metric => {
+        metricsHTML += '<tr>';
+        metricsHTML += `<td style="font-weight: 600;">${metric.replace(/_/g, ' ').toUpperCase()}</td>`;
+        
+        const metricValues = finishedRuns.map(run => getMetricValue(run, metric));
+        const validValues = metricValues.filter(v => v !== null);
+        const bestValue = validValues.length > 0 ? Math.max(...validValues) : null;
+        
+        metricsHTML += metricValues.map(val => {
+            const isBest = val !== null && val === bestValue;
+            const displayVal = val ? (val * 100).toFixed(2) + '%' : 'N/A';
+            const bgColor = isBest ? 'background-color: rgba(31, 184, 205, 0.2);' : '';
+            return `<td style="text-align: center; padding: 12px; ${bgColor}${isBest ? 'font-weight: bold;' : ''}">${displayVal}</td>`;
+        }).join('');
+        
+        metricsHTML += '</tr>';
+    });
+
+    metricsHTML += '</tbody></table></div>';
+
+    // Get all unique parameters
+    const allParams = new Set();
+    finishedRuns.forEach(run => {
+        (run.data.params || []).forEach(p => allParams.add(p.key));
+    });
+
+    let paramsHTML = '';
+    if (allParams.size > 0) {
+        paramsHTML = '<div class="table-container"><table class="experiments-table"><thead><tr><th style="min-width: 150px;">Parameter</th>';
+        paramsHTML += finishedRuns.map(run => `<th style="text-align: center;">${run.info.run_name}</th>`).join('');
+        paramsHTML += '</tr></thead><tbody>';
+
+        Array.from(allParams).forEach(paramKey => {
+            paramsHTML += '<tr>';
+            paramsHTML += `<td style="font-weight: 600;">${paramKey}</td>`;
+            paramsHTML += finishedRuns.map(run => {
+                const param = run.data.params?.find(p => p.key === paramKey);
+                return `<td style="text-align: center; padding: 12px;">${param ? param.value : '-'}</td>`;
+            }).join('');
+            paramsHTML += '</tr>';
+        });
+
+        paramsHTML += '</tbody></table></div>';
+    }
+
+    // Build overview cards
+    let overviewHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">';
+    
+    finishedRuns.forEach(run => {
+        const metricsMap = Object.fromEntries(
+            (run.data.metrics || []).map(m => [m.key, m.value])
+        );
+        const duration = ((run.info.end_time - run.info.start_time) / 1000).toFixed(1);
+        
+        overviewHTML += `
+            <div class="card" style="cursor: pointer; transition: box-shadow 0.2s;" onclick="showRunDetail('${run.info.run_id}')">
+                <div class="card__body">
+                    <h4 style="margin-top: 0; color: #1FB8CD;">${run.info.run_name}</h4>
+                    <div style="font-size: 13px;">
+                        <p style="margin: 6px 0;"><strong>Status:</strong> <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span></p>
+                        <p style="margin: 6px 0;"><strong>Accuracy:</strong> ${metricsMap.accuracy ? (metricsMap.accuracy * 100).toFixed(2) + '%' : 'N/A'}</p>
+                        <p style="margin: 6px 0;"><strong>Duration:</strong> ${duration}s</p>
+                        <p style="margin: 6px 0;"><strong>User:</strong> ${run.info.user_id || 'N/A'}</p>
+                    </div>
+                    <button class="btn btn--sm btn--primary" style="margin-top: 12px;">View Full Details</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    overviewHTML += '</div>';
+
+    // Create comparison chart
+    const chartId = `experiment-comparison-chart-${experimentId}`;
+
+    let chartHTML = `
+        <div class="card" style="margin-top: 20px;">
+            <div class="card__body">
+                <h3>📊 Metrics Radar Chart</h3>
+                <div style="position: relative; height: 400px; margin-top: 20px;">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${overviewHTML}
+        
+        <div class="card">
+            <div class="card__body">
+                <h3>📋 Metrics Comparison</h3>
+                ${metricsHTML}
+                <p style="font-size: 12px; color: #666; margin-top: 12px;"><em>Highlighted cells show the best value for each metric</em></p>
+            </div>
+        </div>
+
+        ${allParams.size > 0 ? `
+            <div class="card" style="margin-top: 20px;">
+                <div class="card__body">
+                    <h3>⚙️ Parameters Comparison</h3>
+                    ${paramsHTML}
+                </div>
+            </div>
+        ` : ''}
+
+        ${chartHTML}
+    `;
+
+    // Create radar chart after a small delay to ensure canvas is rendered
+    setTimeout(() => {
+        createExperimentRunsComparisonChart(chartId, finishedRuns, metrics);
+    }, 100);
+}
+
+// New function to switch between tabs in experiment detail
+function switchExperimentTab(tabName, experimentId) {
+  // Hide all tabs
+  document.querySelectorAll(`#runs-tab-${experimentId}, #comparison-tab-${experimentId}`).forEach(el => {
+    el.classList.remove('active');
+  });
+
+  // Show selected tab
+  if (tabName === 'runs') {
+    const runsTab = document.getElementById(`runs-tab-${experimentId}`);
+    if (runsTab) runsTab.classList.add('active');
+  } else if (tabName === 'comparison') {
+    const comparisonTab = document.getElementById(`comparison-tab-${experimentId}`);
+    if (comparisonTab) {
+      comparisonTab.classList.add('active');
+      // Render comparison when tab is clicked
+      renderExperimentRunsComparison(experimentId, window.currentExperimentRuns);
+    }
+  }
+
+  // Update tab button active state
+  document.querySelectorAll(`#experiment-detail-view .feature-tab`).forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  const activeBtn = Array.from(document.querySelectorAll(`#experiment-detail-view .feature-tab`))
+    .find(b => b.textContent.toLowerCase().includes(tabName));
+  if (activeBtn) activeBtn.classList.add('active');
+}
+
+// Function to render comparison of all runs in an experiment
+function renderExperimentRunsComparison(experimentId, runs) {
+  const container = document.getElementById(`comparison-content-${experimentId}`);
+  if (!container) return;
+
+  const finishedRuns = runs.filter(r => r.info.status === 'FINISHED');
+
+  if (finishedRuns.length < 2) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card__body">
+          <p style="text-align: center; color: var(--color-text-secondary);">
+            Need at least 2 finished runs to compare.
+          </p>
+        </div>
+      </div>
+    `;
     return;
   }
+
+  // Extract metrics and parameters
+  const metrics = ['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'];
   
-  document.getElementById('experiment-detail-title').textContent = experiment.name;
+  // Helper to get metric value
+  const getMetricValue = (run, metricName) => {
+    const metric = run.data.metrics?.find(m => m.key === metricName);
+    return metric ? metric.value : null;
+  };
+
+  // Helper to get param value
+  const getParamValue = (run, paramName) => {
+    const param = run.data.params?.find(p => p.key === paramName);
+    return param ? param.value : null;
+  };
+
+  // Build metrics comparison table
+  let metricsHTML = '<div class="table-container"><table class="experiments-table"><thead><tr><th style="min-width: 150px;">Metric</th>';
+  metricsHTML += finishedRuns.map(run => `<th style="text-align: center;">${run.info.run_name}</th>`).join('');
+  metricsHTML += '</tr></thead><tbody>';
+
+  metrics.forEach(metric => {
+    metricsHTML += '<tr>';
+    metricsHTML += `<td style="font-weight: 600;">${metric.replace(/_/g, ' ').toUpperCase()}</td>`;
+    
+    const metricValues = finishedRuns.map(run => getMetricValue(run, metric));
+    const validValues = metricValues.filter(v => v !== null);
+    const bestValue = validValues.length > 0 ? Math.max(...validValues) : null;
+    
+    metricsHTML += metricValues.map(val => {
+      const isBest = val !== null && val === bestValue;
+      const displayVal = val ? (val * 100).toFixed(2) + '%' : 'N/A';
+      const bgColor = isBest ? 'background-color: rgba(31, 184, 205, 0.2);' : '';
+      return `<td style="text-align: center; padding: 12px; ${bgColor}${isBest ? 'font-weight: bold;' : ''}">${displayVal}</td>`;
+    }).join('');
+    
+    metricsHTML += '</tr>';
+  });
+
+  metricsHTML += '</tbody></table></div>';
+
+  // Get all unique parameters
+  const allParams = new Set();
+  finishedRuns.forEach(run => {
+    (run.data.params || []).forEach(p => allParams.add(p.key));
+  });
+
+  let paramsHTML = allParams.size > 0 ? '<div class="table-container"><table class="experiments-table"><thead><tr><th style="min-width: 150px;">Parameter</th>' : '';
+  paramsHTML += finishedRuns.map(run => `<th style="text-align: center;">${run.info.run_name}</th>`).join('');
+  paramsHTML += '</tr></thead><tbody>';
+
+  Array.from(allParams).forEach(paramKey => {
+    paramsHTML += '<tr>';
+    paramsHTML += `<td style="font-weight: 600;">${paramKey}</td>`;
+    paramsHTML += finishedRuns.map(run => {
+      const param = run.data.params?.find(p => p.key === paramKey);
+      return `<td style="text-align: center; padding: 12px;">${param ? param.value : '-'}</td>`;
+    }).join('');
+    paramsHTML += '</tr>';
+  });
+
+  paramsHTML += allParams.size > 0 ? '</tbody></table></div>' : '';
+
+  // Build overview cards
+  let overviewHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">';
   
-  const content = document.getElementById('experiment-detail-content');
-  content.innerHTML = `
-    <div class="grid-2">
-      <div class="detail-section">
-        <h3>Overview</h3>
-        <div class="detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">Run ID</span>
-            <span class="detail-value">${experiment.id}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status</span>
-            <span class="detail-value">
-              <span class="status-badge ${experiment.status.toLowerCase()}">${experiment.status}</span>
-            </span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Model Type</span>
-            <span class="detail-value">${experiment.model_type}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Dataset</span>
-            <span class="detail-value">${experiment.dataset}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">User</span>
-            <span class="detail-value">${experiment.user}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Duration</span>
-            <span class="detail-value">${experiment.duration}</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="detail-section">
-        <h3>Parameters</h3>
-        <div class="detail-grid">
-          ${Object.entries(experiment.parameters).map(([key, value]) => `
-            <div class="detail-item">
-              <span class="detail-label">${key}</span>
-              <span class="detail-value">${value}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
+  finishedRuns.forEach(run => {
+    const metricsMap = Object.fromEntries(
+      (run.data.metrics || []).map(m => [m.key, m.value])
+    );
+    const duration = ((run.info.end_time - run.info.start_time) / 1000).toFixed(1);
     
-    ${experiment.status === 'FINISHED' ? `
-    <div class="detail-section">
-      <h3>Performance Metrics</h3>
-      <div class="detail-grid">
-        ${Object.entries(experiment.metrics).map(([key, value]) => `
-          <div class="detail-item">
-            <span class="detail-label">${key.replace('_', ' ').toUpperCase()}</span>
-            <span class="detail-value metric-value-large">${value ? (value * 100).toFixed(2) + '%' : 'N/A'}</span>
-            <div class="metric-progress">
-              <div class="metric-progress-fill" style="width: ${value ? value * 100 : 0}%"></div>
-            </div>
+    overviewHTML += `
+      <div class="card" style="cursor: pointer; transition: box-shadow 0.2s;" onclick="showRunDetail('${run.info.run_id}')">
+        <div class="card__body">
+          <h4 style="margin-top: 0; color: #1FB8CD;">${run.info.run_name}</h4>
+          <div style="font-size: 13px;">
+            <p style="margin: 6px 0;"><strong>Status:</strong> <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span></p>
+            <p style="margin: 6px 0;"><strong>Accuracy:</strong> ${metricsMap.accuracy ? (metricsMap.accuracy * 100).toFixed(2) + '%' : 'N/A'}</p>
+            <p style="margin: 6px 0;"><strong>Duration:</strong> ${duration}s</p>
+            <p style="margin: 6px 0;"><strong>User:</strong> ${run.info.user_id || 'N/A'}</p>
           </div>
-        `).join('')}
-      </div>
-    </div>` : ''}
-    
-    ${experimentsData.feature_importance[experimentId] ? `
-    <div class="detail-section" id="experiment-${experimentId}">
-      <h3>🔍 Enhanced Feature Analysis</h3>
-      <p style="color: var(--color-text-secondary); margin-bottom: var(--space-16);">
-        Comprehensive feature analysis using traditional importance methods and SHAP explainability
-      </p>
-      
-      <div class="feature-analysis-tabs">
-        <button class="feature-tab active" onclick="switchFeatureTab('importance', '${experimentId}')">Feature Importance</button>
-        <button class="feature-tab" onclick="switchFeatureTab('shap', '${experimentId}')">SHAP Analysis</button>
-      </div>
-      
-      <div id="importance-content-${experimentId}" class="feature-tab-content active">
-        <div class="feature-importance-chart" style="position: relative; height: 300px; margin-bottom: var(--space-24);">
-          <canvas id="feature-importance-chart-${experimentId}"></canvas>
-        </div>
-        <div class="feature-importance-list">
-          ${experimentsData.feature_importance[experimentId].top_features.map(([feature, importance]) => `
-            <div class="feature-item">
-              <span class="feature-name">${feature}</span>
-              <div class="feature-bar">
-                <div class="feature-bar-fill" style="width: ${importance * 100}%"></div>
-              </div>
-              <span class="feature-score">${(importance * 100).toFixed(1)}%</span>
-            </div>
-          `).join('')}
+          <button class="btn btn--sm btn--primary" style="margin-top: 12px;">View Full Details</button>
         </div>
       </div>
-      
-      <div id="shap-content-${experimentId}" class="feature-tab-content">
-        <div class="shap-visualizations grid-2">
-          <div>
-            <h4>SHAP Summary Chart</h4>
-            <div style="position: relative; height: 300px;">
-              <canvas id="shap-summary-detail-${experimentId}"></canvas>
-            </div>
-          </div>
-          <div>
-            <h4>SHAP Force Plot</h4>
-            <div style="position: relative; height: 300px;">
-              <canvas id="shap-force-detail-${experimentId}"></canvas>
-            </div>
-          </div>
+    `;
+  });
+  
+  overviewHTML += '</div>';
+
+  // Create comparison chart
+  const chartId = `experiment-comparison-chart-${experimentId}`;
+  const chartContainerId = `experiment-comparison-container-${experimentId}`;
+
+  let chartHTML = `
+    <div class="card" style="margin-top: 20px;">
+      <div class="card__body">
+        <h3>📊 Metrics Radar Chart</h3>
+        <div style="position: relative; height: 400px; margin-top: 20px;">
+          <canvas id="${chartId}"></canvas>
         </div>
-        
-        ${experimentsData.feature_importance[experimentId].shap_values ? `
-        <div style="margin-top: var(--space-24);">
-          <h4>SHAP Values Breakdown</h4>
-          <div class="shap-values-list">
-            ${Object.entries(experimentsData.feature_importance[experimentId].shap_values).map(([feature, value]) => `
-              <div class="feature-item">
-                <span class="feature-name">${feature}</span>
-                <div class="feature-bar">
-                  <div class="feature-bar-fill ${value >= 0 ? '' : 'negative'}" style="width: ${Math.abs(value) * 100}%; background-color: ${value >= 0 ? '#1FB8CD' : '#B4413C'}"></div>
-                </div>
-                <span class="feature-score ${value >= 0 ? 'shap-value-positive' : 'shap-value-negative'}">${value.toFixed(4)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>` : ''}
-      </div>
-    </div>` : ''}
-    
-    ${Object.keys(experiment.fairness_metrics).length > 0 && experiment.status === 'FINISHED' ? `
-    <div class="detail-section">
-      <h3>⚖️ Fairness Metrics</h3>
-      <div class="detail-grid">
-        ${Object.entries(experiment.fairness_metrics).map(([key, value]) => `
-          <div class="detail-item">
-            <span class="detail-label">${key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-            <span class="detail-value ${Math.abs(value) > 0.1 ? 'metric-change negative' : 'metric-change positive'}">${value ? value.toFixed(4) : 'N/A'}</span>
-          </div>
-        `).join('')}
-      </div>
-    </div>` : ''}
-    
-    <div class="detail-section">
-      <h3>Artifacts</h3>
-      <div class="artifacts-list">
-        ${experiment.artifacts.map(artifact => `
-          <a href="#" class="artifact-item" onclick="alert('Download: ${artifact}'); return false;">
-            📄 ${artifact}
-          </a>
-        `).join('')}
       </div>
     </div>
   `;
-  
-  showView('experiment-detail');
-  
-  // Create feature importance chart if data exists
-  if (experimentsData.feature_importance[experimentId]) {
-    setTimeout(() => {
-      createFeatureImportanceChart(experimentId);
-      createDetailShapCharts(experimentId);
-    }, 100);
-  }
+
+  container.innerHTML = `
+    ${overviewHTML}
+    
+    <div class="card">
+      <div class="card__body">
+        <h3>📋 Metrics Comparison</h3>
+        ${metricsHTML}
+        <p style="font-size: 12px; color: #666; margin-top: 12px;"><em>Highlighted cells show the best value for each metric</em></p>
+      </div>
+    </div>
+
+    ${allParams.size > 0 ? `
+      <div class="card" style="margin-top: 20px;">
+        <div class="card__body">
+          <h3>⚙️ Parameters Comparison</h3>
+          ${paramsHTML}
+        </div>
+      </div>
+    ` : ''}
+
+    ${chartHTML}
+  `;
+
+  // Create radar chart after a small delay to ensure canvas is rendered
+  setTimeout(() => {
+    createExperimentRunsComparisonChart(chartId, finishedRuns, metrics);
+  }, 100);
+}
+
+// Function to create radar chart for runs comparison
+function createExperimentRunsComparisonChart(canvasId, runs, metrics) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error('Canvas not found:', canvasId);
+        return;
+    }
+
+    // Helper to get metric value
+    const getMetricValue = (run, metricName) => {
+        const metric = run.data.metrics?.find(m => m.key === metricName);
+        return metric ? metric.value * 100 : 0; // Convert to percentage
+    };
+
+    // Prepare datasets for each run
+    const datasets = runs.map((run, index) => {
+        const colors = ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F'];
+        const color = colors[index % colors.length];
+
+        return {
+            label: run.info.run_name,
+            data: metrics.map(metric => getMetricValue(run, metric)),
+            borderColor: color,
+            backgroundColor: color + '33', // Add transparency
+            borderWidth: 2,
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: color,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+        };
+    });
+
+    // Destroy existing chart if it exists
+    if (window.experimentRunsCharts && window.experimentRunsCharts[canvasId]) {
+        window.experimentRunsCharts[canvasId].destroy();
+    }
+
+    if (!window.experimentRunsCharts) {
+        window.experimentRunsCharts = {};
+    }
+
+    // Create new chart
+    window.experimentRunsCharts[canvasId] = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: metrics.map(m => m.replace(/_/g, ' ').toUpperCase()),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 12 },
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.r.toFixed(2) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 function createFeatureImportanceChart(experimentId) {
@@ -2067,33 +2905,165 @@ function createDetailShapCharts(experimentId) {
 }
 
 // Comparison view
-function renderComparisonView() {
-  const selectedExps = experimentsData.experiments.filter(exp => selectedExperiments.includes(exp.id));
+// Fixed comparison view - fetches run data and compares metrics
+async function renderComparisonView() {
+  const allExperiments = await getAllExperimentsFromAPI();
   
+  // Get selected experiments
+  const selectedExps = allExperiments.filter(exp => 
+    selectedExperiments.includes(exp.experiment_id)
+  );
+
+  if (selectedExps.length < 2) {
+    alert('Please select at least 2 experiments to compare.');
+    return;
+  }
+
+  // Fetch runs for each selected experiment
+  const expWithRuns = await Promise.all(
+    selectedExps.map(async (exp) => {
+      const runs = await getExperimentDetailsFromAPI(exp.experiment_id);
+      return { ...exp, runs: runs || [] };
+    })
+  );
+
+  // Extract best run from each experiment (by status and metrics)
+  const bestRuns = expWithRuns.map(exp => {
+    const finishedRuns = exp.runs.filter(r => r.info.status === 'FINISHED');
+    if (finishedRuns.length === 0) return null;
+    
+    // Find run with best accuracy
+    return finishedRuns.reduce((best, current) => {
+      const currentAcc = current.data.metrics?.find(m => m.key === 'accuracy')?.value || 0;
+      const bestAcc = best.data.metrics?.find(m => m.key === 'accuracy')?.value || 0;
+      return currentAcc > bestAcc ? current : best;
+    });
+  }).filter(r => r !== null);
+
+  // Helper function to get metric value
+  const getMetricValue = (run, metricName) => {
+    const metric = run.data.metrics?.find(m => m.key === metricName);
+    return metric ? metric.value : null;
+  };
+
+  // Create metrics comparison table
+  const metrics = ['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'];
+  
+  let metricsHTML = '<div class="table-container"><table class="experiments-table"><thead><tr><th>Metric</th>';
+  metricsHTML += bestRuns.map(run => `<th>${expWithRuns.find(e => e.runs.includes(run))?.name || 'Unknown'}</th>`).join('');
+  metricsHTML += '</tr></thead><tbody>';
+
+  metrics.forEach(metric => {
+    metricsHTML += '<tr>';
+    metricsHTML += `<td><strong>${metric.replace('_', ' ').toUpperCase()}</strong></td>`;
+    
+    const metricValues = bestRuns.map(run => getMetricValue(run, metric));
+    const bestValue = Math.max(...metricValues.filter(v => v !== null));
+    
+    metricsHTML += metricValues.map(val => {
+      const isBest = val === bestValue && val !== null;
+      const displayVal = val ? (val * 100).toFixed(2) + '%' : 'N/A';
+      const bgColor = isBest ? 'background-color: rgba(31, 184, 205, 0.2);' : '';
+      return `<td style="${bgColor}${isBest ? 'font-weight: bold;' : ''}">${displayVal}</td>`;
+    }).join('');
+    
+    metricsHTML += '</tr>';
+  });
+
+  metricsHTML += '</tbody></table></div>';
+
+  // Get parameters from best runs
+  let paramsHTML = '<div class="table-container"><table class="experiments-table"><thead><tr><th>Parameter</th>';
+  paramsHTML += bestRuns.map(run => `<th>${expWithRuns.find(e => e.runs.includes(run))?.name || 'Unknown'}</th>`).join('');
+  paramsHTML += '</tr></thead><tbody>';
+
+  const allParams = new Set();
+  bestRuns.forEach(run => {
+    (run.data.params || []).forEach(p => allParams.add(p.key));
+  });
+
+  Array.from(allParams).forEach(paramKey => {
+    paramsHTML += '<tr>';
+    paramsHTML += `<td><strong>${paramKey}</strong></td>`;
+    paramsHTML += bestRuns.map(run => {
+      const param = run.data.params?.find(p => p.key === paramKey);
+      return `<td>${param ? param.value : '-'}</td>`;
+    }).join('');
+    paramsHTML += '</tr>';
+  });
+
+  paramsHTML += '</tbody></table></div>';
+
+  // Create run details
+  let runsHTML = '';
+  bestRuns.forEach((run, idx) => {
+    const exp = expWithRuns.find(e => e.runs.includes(run));
+    runsHTML += `
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card__body">
+          <h3>${exp?.name}</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <p><strong>Run ID:</strong> <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${run.info.run_id}</code></p>
+              <p><strong>Status:</strong> <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span></p>
+              <p><strong>Duration:</strong> ${run.info.end_time ? (((run.info.end_time - run.info.start_time) / 1000).toFixed(1) + 's') : 'Running'}</p>
+            </div>
+            <div>
+              <p><strong>Started:</strong> ${new Date(run.info.start_time).toLocaleString()}</p>
+              <p><strong>User:</strong> ${run.info.user_id || 'N/A'}</p>
+              <button class="btn btn--sm btn--primary" onclick="showRunDetail('${run.info.run_id}')">View Full Details</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
   const content = document.getElementById('comparison-content');
   content.innerHTML = `
-    <div class="comparison-grid">
-      ${selectedExps.map(exp => `
-        <div class="comparison-experiment">
-          <h3>${exp.name}</h3>
-          <div class="comparison-metrics">
-            ${renderComparisonMetrics(selectedExps, exp)}
+    <div class="comparison-overview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+      ${expWithRuns.map(exp => `
+        <div class="card">
+          <div class="card__body">
+            <h3 style="margin-top: 0; font-size: 16px;">${exp.name}</h3>
+            <p style="margin: 8px 0; font-size: 13px;"><strong>Runs:</strong> ${exp.runs.length}</p>
+            <p style="margin: 8px 0; font-size: 13px;"><strong>Status:</strong> <span class="status-badge ${exp.lifecycle_stage.toLowerCase()}">${exp.lifecycle_stage}</span></p>
           </div>
         </div>
       `).join('')}
     </div>
-    
-    <div class="card" style="margin-top: var(--space-32);">
+
+    <div class="card">
       <div class="card__body">
-        <h3>Performance Comparison</h3>
-        <div class="chart-container" style="position: relative; height: 400px;">
-          <canvas id="comparisonChart"></canvas>
-        </div>
+        <h3>📊 Metrics Comparison (Best Run per Experiment)</h3>
+        ${metricsHTML}
+        <p style="font-size: 12px; color: #666; margin-top: 12px;"><em>Highlighted cells show the best value for each metric</em></p>
       </div>
     </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card__body">
+        <h3>⚙️ Parameters Comparison</h3>
+        ${paramsHTML}
+      </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h3 style="margin-bottom: 20px;">📋 Run Details</h3>
+      ${runsHTML}
+    </div>
   `;
+}
+
+// Updated showComparison function
+async function showComparison() {
+  if (selectedExperiments.length < 2) {
+    alert('Please select at least 2 experiments to compare.');
+    return;
+  }
   
-  setTimeout(() => createComparisonChart(selectedExps), 100);
+  await renderComparisonView();
+  showView('comparison');
 }
 
 function renderComparisonMetrics(allExps, currentExp) {
@@ -2301,4 +3271,437 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeFileUpload);
 } else {
   initializeFileUpload();
+}
+
+
+// Add this script tag to your HTML (in the <head> section):
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+// ============================================
+// PDF REPORT GENERATION FEATURE
+// ============================================
+
+/**
+ * Generate PDF Report for Selected Experiments
+ * Call this function when user clicks "Generate Report" button
+ */
+async function generatePDFReport() {
+  if (selectedExperiments.length < 2) {
+    alert('Please select at least 2 experiments to generate a report.');
+    return;
+  }
+
+  // Show loading indicator
+  showLoadingModal('Generating PDF Report... This may take a few seconds.');
+
+  try {
+    // Get selected experiments data
+    const selectedExps = experimentsData.experiments.filter(exp => 
+      selectedExperiments.includes(exp.id)
+    );
+
+    // Create report HTML
+    const reportHTML = createReportHTML(selectedExps);
+
+    // Generate PDF
+    const element = document.createElement('div');
+    element.innerHTML = reportHTML;
+
+    const opt = {
+      margin: 10,
+      filename: `model_comparison_${new Date().getTime()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+
+    // Generate and download
+    await html2pdf().set(opt).from(element).save();
+
+    // Hide loading and show success
+    hideLoadingModal();
+    showSuccessMessage('PDF Report generated and downloaded successfully! 📄');
+
+  } catch (error) {
+    hideLoadingModal();
+    console.error('Error generating PDF:', error);
+    alert('Error generating PDF: ' + error.message);
+  }
+}
+
+/**
+ * Create HTML structure for the PDF report
+ */
+function createReportHTML(selectedExps) {
+  const finishedExps = selectedExps.filter(exp => exp.status === 'FINISHED');
+  const metrics = ['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'];
+
+  // Find best performers for each metric
+  const bestPerformers = {};
+  metrics.forEach(metric => {
+    const validValues = finishedExps
+      .map(exp => ({ exp, value: exp.metrics[metric] }))
+      .filter(item => item.value !== null);
+    
+    if (validValues.length > 0) {
+      const best = validValues.reduce((max, item) => 
+        item.value > max.value ? item : max
+      );
+      bestPerformers[metric] = best.exp.id;
+    }
+  });
+
+  // Generate table rows for metrics
+  const metricsTableRows = finishedExps.map(exp => {
+    return `
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 12px; font-weight: 600;">${exp.name}</td>
+        ${metrics.map(metric => {
+          const value = exp.metrics[metric];
+          const isBest = bestPerformers[metric] === exp.id;
+          const cellStyle = isBest 
+            ? 'background-color: #d4edda; font-weight: 600; color: #155724;'
+            : 'color: #333;';
+          
+          return `<td style="padding: 12px; text-align: center; ${cellStyle}">
+            ${value ? (value * 100).toFixed(2) + '%' : 'N/A'}
+          </td>`;
+        }).join('')}
+      </tr>
+    `;
+  }).join('');
+
+  // Generate model details section
+  const modelDetailsHTML = finishedExps.map(exp => {
+    const fairnessMetrics = Object.keys(exp.fairness_metrics).length > 0;
+    
+    return `
+      <div style="page-break-inside: avoid; margin-bottom: 30px; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+        <h3 style="margin-top: 0; color: #1FB8CD; border-bottom: 2px solid #1FB8CD; padding-bottom: 10px;">
+          ${exp.name}
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+          <div>
+            <p><strong>Status:</strong> <span style="background-color: ${getStatusColor(exp.status)}; padding: 4px 12px; border-radius: 20px; color: white;">${exp.status}</span></p>
+            <p><strong>Model Type:</strong> ${exp.model_type}</p>
+            <p><strong>Dataset:</strong> ${exp.dataset}</p>
+            <p><strong>User:</strong> ${exp.user}</p>
+          </div>
+          <div>
+            <p><strong>Duration:</strong> ${exp.duration}</p>
+            <p><strong>Start Time:</strong> ${exp.start_time}</p>
+            <p><strong>Run ID:</strong> <code style="background-color: #f5f5f5; padding: 2px 6px;">${exp.id}</code></p>
+          </div>
+        </div>
+
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+          <h4 style="margin-top: 0; color: #333;">Parameters</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${Object.entries(exp.parameters).map(([key, value]) => 
+              `<li>${key}: <strong>${value}</strong></li>`
+            ).join('')}
+          </ul>
+        </div>
+
+        ${fairnessMetrics ? `
+          <div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; border-left: 4px solid #ffc107;">
+            <h4 style="margin-top: 0; color: #856404;">Fairness Metrics</h4>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${Object.entries(exp.fairness_metrics).map(([key, value]) => 
+                `<li>${key.replace(/_/g, ' ').toUpperCase()}: <strong>${value.toFixed(4)}</strong></li>`
+              ).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 15px;">
+          <p><strong>Artifacts (${exp.artifacts.length}):</strong> ${exp.artifacts.join(', ')}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Generate recommendations section
+  const recommendationsHTML = generateRecommendations(finishedExps);
+
+  // Main report HTML
+  return `
+    <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+      
+      <!-- Header -->
+      <div style="text-align: center; border-bottom: 3px solid #1FB8CD; padding-bottom: 20px; margin-bottom: 30px;">
+        <h1 style="margin: 0; color: #1FB8CD; font-size: 32px;">Model Comparison Report</h1>
+        <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+          Generated on ${new Date().toLocaleString()}
+        </p>
+      </div>
+
+      <!-- Executive Summary -->
+      <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #1FB8CD;">
+        <h2 style="margin-top: 0; color: #0d47a1;">Executive Summary</h2>
+        <p><strong>Models Compared:</strong> ${finishedExps.length} finished experiments</p>
+        <p><strong>Comparison Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <p><strong>Best Overall Model:</strong> <span style="color: #1FB8CD; font-weight: 600;">${findBestModel(finishedExps).name}</span> (Accuracy: ${(findBestModel(finishedExps).metrics.accuracy * 100).toFixed(2)}%)</p>
+      </div>
+
+      <!-- Metrics Comparison Table -->
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #1FB8CD; border-bottom: 2px solid #1FB8CD; padding-bottom: 10px;">Performance Metrics Comparison</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+          <thead style="background-color: #1FB8CD; color: white;">
+            <tr>
+              <th style="padding: 12px; text-align: left;">Model</th>
+              ${metrics.map(metric => `<th style="padding: 12px; text-align: center;">${metric.replace(/_/g, ' ').toUpperCase()}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${metricsTableRows}
+          </tbody>
+        </table>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+          <em>Note: Green highlighted cells indicate the best performer for each metric.</em>
+        </p>
+      </div>
+
+      <!-- Detailed Model Breakdown -->
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #1FB8CD; border-bottom: 2px solid #1FB8CD; padding-bottom: 10px;">Detailed Model Analysis</h2>
+        ${modelDetailsHTML}
+      </div>
+
+      <!-- Recommendations -->
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; page-break-inside: avoid;">
+        <h2 style="margin-top: 0; color: #1FB8CD;">Recommendations</h2>
+        ${recommendationsHTML}
+      </div>
+
+      <!-- Footer -->
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #999; font-size: 12px;">
+        <p>This report was generated by Enhanced MLflow Tracking System</p>
+        <p>For questions or feedback, contact your ML team lead.</p>
+      </div>
+
+    </div>
+  `;
+}
+
+/**
+ * Generate recommendations based on experiment results
+ */
+function generateRecommendations(experiments) {
+  const recommendations = [];
+
+  if (experiments.length === 0) {
+    return '<p>No finished experiments to analyze.</p>';
+  }
+
+  // Find best model
+  const best = findBestModel(experiments);
+  recommendations.push({
+    type: 'success',
+    title: '✅ Best Performer Identified',
+    text: `<strong>${best.name}</strong> shows the best overall accuracy at <strong>${(best.metrics.accuracy * 100).toFixed(2)}%</strong>. Consider this for production deployment after further validation.`
+  });
+
+  // Fastest model
+  const fastest = experiments.reduce((prev, current) => {
+    const prevDuration = parseInt(prev.duration);
+    const currentDuration = parseInt(current.duration);
+    return currentDuration < prevDuration ? current : prev;
+  });
+  recommendations.push({
+    type: 'info',
+    title: '⚡ Fastest Model',
+    text: `<strong>${fastest.name}</strong> completed in ${fastest.duration}. Useful if inference speed is critical.`
+  });
+
+  // Fairness check
+  const fairnessExps = experiments.filter(exp => Object.keys(exp.fairness_metrics).length > 0);
+  if (fairnessExps.length > 0) {
+    const avgFairness = fairnessExps.reduce((sum, exp) => {
+      const fairnessValues = Object.values(exp.fairness_metrics).map(Math.abs);
+      return sum + fairnessValues.reduce((a, b) => a + b, 0) / fairnessValues.length;
+    }, 0) / fairnessExps.length;
+
+    if (avgFairness > 0.1) {
+      recommendations.push({
+        type: 'warning',
+        title: '⚠️ Fairness Concerns',
+        text: `Average fairness metrics indicate potential bias (mean difference: ${avgFairness.toFixed(4)}). Review fairness analysis and consider mitigation strategies.`
+      });
+    } else {
+      recommendations.push({
+        type: 'success',
+        title: '✨ Good Fairness Performance',
+        text: `Models show relatively balanced fairness metrics across different demographic groups. This is a positive indicator.`
+      });
+    }
+  }
+
+  // Precision vs Recall tradeoff
+  const precisionRecallDiff = experiments.map(exp => ({
+    name: exp.name,
+    diff: Math.abs(exp.metrics.precision - exp.metrics.recall)
+  }));
+  const mostBalanced = precisionRecallDiff.reduce((prev, current) => 
+    current.diff < prev.diff ? current : prev
+  );
+  recommendations.push({
+    type: 'info',
+    title: '⚖️ Best Precision-Recall Balance',
+    text: `<strong>${mostBalanced.name}</strong> has the most balanced precision-recall trade-off, suitable if both metrics are equally important.`
+  });
+
+  // Variability check
+  const standardDeviation = calculateMetricStdDev(experiments, 'accuracy');
+  if (standardDeviation > 0.05) {
+    recommendations.push({
+      type: 'warning',
+      title: '📊 High Model Variability',
+      text: `Accuracy varies significantly across models (std dev: ${(standardDeviation * 100).toFixed(2)}%). Ensure consistent data preprocessing and validation methodology.`
+    });
+  }
+
+  // Render recommendations
+  return recommendations.map(rec => {
+    const bgColor = rec.type === 'success' ? '#d4edda' : rec.type === 'warning' ? '#fff3cd' : '#d1ecf1';
+    const borderColor = rec.type === 'success' ? '#28a745' : rec.type === 'warning' ? '#ffc107' : '#17a2b8';
+
+    return `
+      <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+        <h4 style="margin-top: 0; color: ${borderColor};">${rec.title}</h4>
+        <p style="margin: 0;">${rec.text}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Find the best performing model
+ */
+function findBestModel(experiments) {
+  return experiments.reduce((best, current) => 
+    current.metrics.accuracy > best.metrics.accuracy ? current : best
+  );
+}
+
+/**
+ * Calculate standard deviation of a metric
+ */
+function calculateMetricStdDev(experiments, metric) {
+  const values = experiments
+    .map(exp => exp.metrics[metric])
+    .filter(v => v !== null);
+  
+  if (values.length === 0) return 0;
+  
+  const mean = values.reduce((a, b) => a + b) / values.length;
+  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * Get color for status badge
+ */
+function getStatusColor(status) {
+  switch (status) {
+    case 'FINISHED': return '#28a745';
+    case 'RUNNING': return '#ffc107';
+    case 'FAILED': return '#dc3545';
+    default: return '#6c757d';
+  }
+}
+
+/**
+ * Show loading modal
+ */
+function showLoadingModal(message) {
+  const modal = document.createElement('div');
+  modal.id = 'loading-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `;
+  modal.innerHTML = `
+    <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+      <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
+      <p style="margin: 0; font-size: 16px; color: #333;">${message}</p>
+      <div style="margin-top: 15px; display: flex; justify-content: center; gap: 5px;">
+        <div style="width: 8px; height: 8px; background: #1FB8CD; border-radius: 50%; animation: pulse 1.4s infinite;"></div>
+        <div style="width: 8px; height: 8px; background: #1FB8CD; border-radius: 50%; animation: pulse 1.4s infinite 0.2s;"></div>
+        <div style="width: 8px; height: 8px; background: #1FB8CD; border-radius: 50%; animation: pulse 1.4s infinite 0.4s;"></div>
+      </div>
+    </div>
+  `;
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(modal);
+}
+
+/**
+ * Hide loading modal
+ */
+function hideLoadingModal() {
+  const modal = document.getElementById('loading-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+/**
+ * Show success message
+ */
+function showSuccessMessage(message) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #d4edda;
+    color: #155724;
+    padding: 16px 20px;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    animation: slideIn 0.3s ease-out;
+  `;
+  toast.textContent = message;
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease-out reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }

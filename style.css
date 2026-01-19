@@ -763,6 +763,12 @@ select.form-control {
   font-weight: var(--font-weight-bold);
 }
 
+#main-heading-web{
+  color: var(--color-primary) !important;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
 .nav-menu {
   display: flex;
   gap: var(--space-8);

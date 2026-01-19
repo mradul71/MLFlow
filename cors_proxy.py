@@ -5,21 +5,17 @@ import os
 from urllib.parse import urlparse
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 MLFLOW_SERVER = 'http://localhost:5000'
 
 @app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 def proxy(path):
-    # ... existing code ...
-    """Forward all requests to MLflow server"""
     url = f'{MLFLOW_SERVER}/api/{path}'
 
-    # Handle CORS preflight locally
     if request.method == 'OPTIONS':
         return '', 200
 
-    # Only forward safe headers (avoid Host/Origin/Referer/etc.)
     forward_headers = {}
     for k, v in request.headers.items():
       lk = k.lower()
@@ -40,7 +36,6 @@ def proxy(path):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# NEW: Serve artifact content directly from local artifact store
 @app.route('/artifact-content', methods=['GET', 'OPTIONS'])
 def artifact_content():
     """
@@ -59,7 +54,6 @@ def artifact_content():
         return jsonify({'error': 'run_id/run_uuid and path are required'}), 400
 
     try:
-        # Fetch run to obtain artifact_uri
         resp = requests.get(f'{MLFLOW_SERVER}/api/2.0/mlflow/runs/get', params={'run_id': run_id})
         if not resp.ok:
             return jsonify({'error': f'Failed to fetch run info: {resp.status_code}'}), resp.status_code
@@ -77,7 +71,7 @@ def artifact_content():
             return jsonify({'error': f'Unsupported artifact scheme: {parsed.scheme}'}), 400
         print('hello 1')
 
-        base_dir = parsed.path  # e.g., /.../mlruns/<exp>/<run>/artifacts
+        base_dir = parsed.path
         file_path = os.path.abspath(os.path.join(base_dir, rel_path))
         print('hello 2')
 
@@ -85,7 +79,6 @@ def artifact_content():
             return jsonify({'error': f'Artifact not found: {file_path}'}), 404
         print('hello 3')
 
-        # Infer content-type for common types; default to octet-stream
         ext = os.path.splitext(file_path)[1].lower()
         print('hello 4')
         content_type = 'application/octet-stream'

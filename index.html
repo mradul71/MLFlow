@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced MLflow - Intelligent ML Experiment Tracking</title>
+    <title>Intelligent ML Experiment Tracking</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -13,13 +13,14 @@
     <header class="header">
         <div class="nav-container">
             <div class="nav-brand">
-                <h1>Enhanced MLflow</h1>
+                <!-- <h1>Enhanced MLflow</h1> -->
             </div>
             <nav class="nav-menu">
                 <!-- <button class="nav-link active" data-view="dashboard">Dashboard</button> -->
                 <button class="nav-link" data-view="experiments">Experiments</button>
                 <button class="nav-link" data-view="shap">SHAP Analysis</button>
                 <button class="nav-link" data-view="architecture">System Architecture</button>
+                <button class="nav-link" data-view="models">Models</button>
             </nav>
             <div class="nav-user">
                 <span class="user-greeting">Welcome, Ryan</span>
@@ -29,6 +30,7 @@
 
     <main class="main-content">
         <!-- SHAP Analysis View -->
+         <p id="main-heading-web" style="text-align: center;">Custom Dashboard for Machine Learning Model Experiment Tracking and Explainability</p>
         <div id="shap-view" class="view">
             <div class="page-header">
                 <h2>🔍 SHAP Analysis Dashboard</h2>
@@ -36,39 +38,6 @@
             </div>
 
             <div class="shap-content">
-                <!-- MLflow Connection Settings -->
-                <div class="card shap-connection-card">
-                    <div class="card__body">
-                        <h3>📊 MLflow Connection Settings</h3>
-                        <div class="shap-settings-grid">
-                            <div class="form-group">
-                                <label class="form-label">MLflow Tracking URI</label>
-                                <input type="text" class="form-control" id="mlflow-tracking-uri" value="http://localhost:8080" placeholder="http://localhost:8080">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Experiment Name</label>
-                                <input type="text" class="form-control" id="experiment-name-input" placeholder="Enter experiment name">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Select Run</label>
-                                <select class="form-control" id="run-selector">
-                                    <option value="">Select a run...</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <button class="btn btn--primary" onclick="loadModel()">Load Model</button>
-                            </div>
-                        </div>
-                        
-                        <div id="model-status" class="model-status hidden">
-                            <div class="status-indicator">
-                                <span class="status-icon">✅</span>
-                                <span class="status-text">Model loaded successfully</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Data Upload Section -->
                 <div class="card shap-upload-card">
                     <div class="card__body">
@@ -93,36 +62,6 @@
                     </div>
                 </div>
 
-                <!-- SHAP Analysis Controls -->
-                <div class="card shap-controls-card">
-                    <div class="card__body">
-                        <h3>🎛️ SHAP Analysis Controls</h3>
-                        <div class="shap-controls-grid">
-                            <div class="form-group">
-                                <label class="form-label">Analysis Type</label>
-                                <select class="form-control" id="shap-analysis-type">
-                                    <option value="summary">Summary Plot</option>
-                                    <option value="bar">Bar Plot</option>
-                                    <option value="waterfall">Waterfall Plot</option>
-                                    <option value="force">Force Plot</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Sample Index (for Force Plot)</label>
-                                <input type="number" class="form-control" id="sample-index" value="0" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Max Features</label>
-                                <input type="number" class="form-control" id="max-features" value="10" min="1" max="20">
-                            </div>
-                            <div class="form-group">
-                                <button class="btn btn--primary" onclick="generateShapAnalysis()">🔍 Generate SHAP Analysis</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SHAP Visualizations -->
                 <!-- SHAP Visualizations -->
                 <div class="shap-visualizations" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <!-- Left Column: Summary Plot (Full Height) -->
@@ -321,85 +260,67 @@
             </div>
         </div>
 
+        <!-- Models View -->
+        <div id="models-view" class="view">
+            <div class="page-header">
+                <h2>Coming Soon...</h2>
+            </div>
+        </div>
+
         <!-- Experiments View -->
         <div id="experiments-view" class="view">
             <div class="page-header">
                 <h2>Experiments</h2>
-                <div class="page-actions">
-                    <button class="btn btn--primary" onclick="window.compareMode = !window.compareMode; updateCompareMode()">
-                        Compare Mode
-                    </button>
-                </div>
             </div>
 
-            <!-- Filters Section -->
-            <div class="filters-section">
+            <div class="model-run-section">
                 <div class="card">
                     <div class="card__body">
                         <div class="filters-grid">
-                            <div class="filter-group">
-                                <label class="form-label">Search</label>
-                                <input type="text" class="form-control" id="search-input" placeholder="Search experiments...">
-                            </div>
-                            <div class="filter-group">
-                                <label class="form-label">Status</label>
-                                <select class="form-control" id="status-filter">
-                                    <option value="">All Status</option>
-                                    <option value="FINISHED">Finished</option>
-                                    <option value="RUNNING">Running</option>
-                                    <option value="FAILED">Failed</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <label class="form-label">Model Type</label>
+                            <div class="filters-group">
+                                <label class="form-label">Select Model Type</label>
                                 <select class="form-control" id="model-filter">
-                                    <option value="">All Models</option>
-                                    <option value="RandomForest">Random Forest</option>
-                                    <option value="XGBoost">XGBoost</option>
-                                    <option value="LogisticRegression">Logistic Regression</option>
-                                    <option value="SVM">SVM</option>
-                                    <option value="DecisionTree">Decision Tree</option>
+                                    <option value="">-- Select a Model --</option>
+                                    <option value="Regression_LinearRegression">Linear Regression</option>
+                                    <option value="Regression_GBTRegressor">GBT Regressor</option>
+                                    <option value="Regression_RandomForest">Random Forest (Regression)</option>
+                                    <option value="Regression_DecisionTree">Decision Tree (Regression)</option>
+                                    <option value="Clustering_BisectingKMeans">Bisecting KMeans</option>
+                                    <option value="Clustering_GaussianMixture">Gaussian Mixture</option>
+                                    <option value="Clustering_LDA">Latent Dirichlet Allocation</option>
+                                    <option value="Clustering_KMeans">KMeans</option>
+                                    <option value="Classification_LogisticRegression">Logistic Regression</option>
+                                    <option value="Classification_DecisionTree">Decision Tree</option>
+                                    <option value="Classification_RandomForest">Random Forest (Classification)</option>
+                                    <option value="Classification_GBTClassifier">GBT Classifier</option>
+                                    <option value="Classification_LinearSVC">Linear SVC Classifier</option>
+                                    <option value="Classification_MLPC">Multilayer Perceptron Classifier</option>
+                                    <option value="Classification_NaiveBayes">Naive Bayes Classifier</option>
+                                    <option value="Classification_OVR">One Vs Rest Classifier</option>
                                 </select>
                             </div>
-                            <div class="filter-group">
-                                <label class="form-label">Dataset</label>
-                                <select class="form-control" id="dataset-filter">
-                                    <option value="">All Datasets</option>
-                                    <option value="Titanic">Titanic</option>
-                                    <option value="Iris">Iris</option>
-                                    <option value="Diabetes">Diabetes</option>
-                                    <option value="Wine Quality">Wine Quality</option>
-                                </select>
+                            <div class="filter-group" style="max-width: 150px; display: flex; align-items: flex-end; margin-top: 25px;">
+                                <button class="btn btn--primary" onclick="runModel()" disabled style="width: 100%; opacity: 0.5; cursor: not-allowed;">
+                                    🚀 Run Model
+                                </button>
                             </div>
+                        </div>
+                        <!-- <input type="file" id="model-file-input" accept=".csv" class="model-file-input"> -->
+                         <div class="form-group" style="margin-top: 20px;">
+                            <label class="form-label">Upload Dataset (CSV)</label>
+                            <input type="file" id="model-file-input" accept=".csv" class="form-control">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Compare Banner -->
-            <div id="compare-banner" class="compare-banner hidden">
-                <div class="compare-content">
-                    <span>Compare Mode: Select up to 4 experiments</span>
-                    <div class="compare-actions">
-                    <span id="selected-count">0 selected</span>
-                    <!-- Add this line to the compare actions -->
-                    <button class="btn btn--primary btn--sm" onclick="showComparisonAndGenerateReport()">📄 Generate Report</button>
-                    <button class="btn btn--primary btn--sm" onclick="showComparison()">Compare Selected</button>
-                    <button class="btn btn--outline btn--sm" onclick="clearSelection()">Clear</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Experiments Table -->
-            <div class="card">
+            <div class="card" style="margin-top: 20px;">
                 <div class="card__body">
                     <div class="table-container">
                         <table class="experiments-table">
                             <thead>
                                 <tr>
-                                    <th id="compare-header" class="compare-column hidden">
-                                        <input type="checkbox" id="select-all">
-                                    </th>
                                     <th>Name</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -621,7 +542,7 @@ async function showExperimentDetail(experiment) {
                                         <th>Source</th>
                                         <th>Status</th>
                                         <th>Model Type</th>
-                                        <th>Dataset</th>
+                                        <th>Dataset Level</th>
                                         <th>User</th>
                                         <th>Accuracy</th>
                                         <th>Duration</th>
@@ -646,7 +567,7 @@ async function showExperimentDetail(experiment) {
                                                 <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span>
                                             </td>
                                             <td>${run.data.params && run.data.params[0] ? run.data.params[0].value : '--'}</td>
-                                            <td>${run.dataset ? run.dataset : '--'}</td>
+                                            <td>${run.data.params && run.data.params[1] ? run.data.params[1].value : '--'}</td>
                                             <td>${run.info.user_id}</td>
                                             <td>${metricsMap.accuracy ? (metricsMap.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
                                             <td>${((run.info.end_time-run.info.start_time) / 1000).toFixed(1)}s</td>

@@ -1,6 +1,3 @@
-
-
-// Application Data - Using the provided experiment data with Ryan instead of Alice
 const experimentsData = {
   "experiments": [
     {"id": "run_001", "name": "LogisticRegression_Iris_1", "status": "FINISHED", "user": "Ryan", "model_type": "LogisticRegression", "dataset": "Iris", "start_time": "2025-08-20 08:47:30", "duration": "87s", "parameters": {"C": 0.71}, "metrics": {"accuracy": 0.7623, "precision": 0.778, "recall": 0.7375, "f1_score": 0.7584, "auc_roc": 0.7538}, "fairness_metrics": {}, "artifacts": ["model.pkl", "feature_importance.png", "confusion_matrix.png", "shap_summary.png"]},
@@ -54,14 +51,18 @@ let selectedExperiments = [];
 let compareMode = true;
 let charts = {};
 let currentModel = null;
-let uploadedData = null;
+let uploadedModelFile = null;
+let selectedModelType = null;
 let uploadedShapFile = null;
+let uploadedData = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOMContentLoaded fired');
   initializeNavigation();
   initializeExperiments();
   setupEventListeners();
+  initializeModelRunSection();
   
   // Make functions globally accessible
   window.showView = showView;
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.loadModel = loadModel;
   window.generateShapAnalysis = generateShapAnalysis;
   window.switchFeatureTab = switchFeatureTab;
+  window.runModel = runModel;
 });
 
 // Navigation
@@ -85,6 +87,258 @@ function initializeNavigation() {
     // Add new event listener
     link.addEventListener('click', handleNavClick);
   });
+}
+
+// Initialize model upload and type selection handlers
+function initializeModelRunSection() {
+  console.log('Initializing Model Run Section');
+  const modelFilter = document.getElementById('model-filter');
+  const modelFileInput = document.getElementById('model-file-input');
+  const fileUploadArea = document.getElementById('file-upload-area');
+
+  console.log('Elements found:', {
+    modelFilter: !!modelFilter,
+    modelFileInput: !!modelFileInput,
+    fileUploadArea: !!fileUploadArea
+  });
+  
+  if (modelFilter) {
+    modelFilter.addEventListener('change', function(e) {
+      selectedModelType = e.target.value;
+      console.log('Model type selected:', selectedModelType);
+      updateRunModelButtonState();
+    });
+  }
+  
+  // Handle file upload area click
+  if (fileUploadArea) {
+    fileUploadArea.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Upload area clicked');
+      if (modelFileInput) {
+        modelFileInput.click();
+      }
+    });
+  }
+  
+  // Handle file input change
+  if (modelFileInput) {
+    modelFileInput.addEventListener('change', function(e) {
+      console.log('File input changed');
+      if (e.target.files && e.target.files.length > 0) {
+        handleModelFileUpload(e.target.files[0]);
+      }
+    });
+  }
+
+  // Handle drag and drop
+  if (fileUploadArea) {
+    fileUploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fileUploadArea.classList.add('dragover');
+      console.log('Drag over');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fileUploadArea.classList.remove('dragover');
+    });
+    
+    fileUploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fileUploadArea.classList.remove('dragover');
+      console.log('File dropped');
+      
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleModelFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+  }
+  console.log('Model Run Section initialized');
+}
+
+function handleModelTypeSelection(e) {
+  selectedModelType = e.target.value;
+  updateRunModelButtonState();
+}
+
+function handleModelFileSelect(e) {
+  if (e.target.files.length > 0) {
+    handleModelFileUpload(e.target.files[0]);
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+}
+
+function handleModelFileDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    handleModelFileUpload(files[0]);
+  }
+}
+
+function handleModelFileUpload(file) {
+  console.log('handleModelFileUpload called with:', file.name);
+  
+  if (!file.name.endsWith('.csv')) {
+    alert('❌ Please upload a CSV file');
+    return;
+  }
+  
+  uploadedModelFile = file;
+  console.log('File stored:', uploadedModelFile.name);
+  updateFileUploadUI(file.name);
+  updateRunModelButtonState();
+}
+
+function updateFileUploadUI(fileName) {
+  const fileUploadArea = document.getElementById('file-upload-area');
+  if (!fileUploadArea) {
+    console.error('File upload area not found');
+    return;
+  }
+  
+  fileUploadArea.innerHTML = `
+    <div class="upload-icon">✅</div>
+    <div class="upload-text">
+      <p class="upload-title">File uploaded successfully!</p>
+      <p class="upload-subtitle">${fileName}</p>
+      <p class="upload-subtitle" style="font-size: 12px; margin-top: 8px; color: #666;">Click to change file</p>
+    </div>
+    <input type="file" id="model-file-input" accept=".csv" class="file-input hidden" style="display: none;">
+  `;
+  
+  // Re-attach file input listener
+  const newFileInput = document.getElementById('model-file-input');
+  if (newFileInput) {
+    newFileInput.addEventListener('change', function(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        handleModelFileUpload(e.target.files[0]);
+      }
+    });
+  }
+  
+  // Re-attach click handler
+  const newFileUploadArea = document.getElementById('file-upload-area');
+  if (newFileUploadArea) {
+    newFileUploadArea.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const input = document.getElementById('model-file-input');
+      if (input) input.click();
+    });
+  }
+}
+
+function updateRunModelButtonState() {
+  const runModelBtn = document.querySelector('.model-run-section .btn--primary');
+  
+  console.log('Updating button state:');
+  console.log('  File:', uploadedModelFile ? uploadedModelFile.name : 'None');
+  console.log('  Model Type:', selectedModelType || 'None');
+  
+  if (runModelBtn) {
+    if (uploadedModelFile && selectedModelType) {
+      runModelBtn.disabled = false;
+      runModelBtn.style.opacity = '1';
+      runModelBtn.style.cursor = 'pointer';
+      console.log('Button ENABLED');
+    } else {
+      runModelBtn.disabled = true;
+      runModelBtn.style.opacity = '0.5';
+      runModelBtn.style.cursor = 'not-allowed';
+      console.log('Button DISABLED');
+    }
+  } else {
+    console.error('Run model button not found!');
+  }
+}
+
+// Main function to run the model
+async function runModel() {
+  if (!uploadedModelFile || !selectedModelType) {
+    alert('Please upload a CSV file and select a model type');
+    return;
+  }
+  
+  showLoadingModal('Preparing model training...');
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', uploadedModelFile, 'data.csv');
+    formData.append('model_type', selectedModelType);
+    
+    // Step 2: Send to backend to execute Python script
+    const response = await fetch('http://localhost:5001/run-model', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    hideLoadingModal();
+    
+    if (result.success) {
+      showSuccessMessage(`✅ Model training completed! Run ID: ${result.run_id}`);
+      
+      // Reset the form
+      resetModelRunForm();
+      
+      // Optionally refresh experiments list
+      setTimeout(() => {
+        renderExperimentsTable();
+      }, 1000);
+    } else {
+      throw new Error(result.error || 'Unknown error occurred');
+    }
+    
+  } catch (error) {
+    hideLoadingModal();
+    console.error('Error running model:', error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
+function resetModelRunForm() {
+  uploadedModelFile = null;
+  selectedModelType = null;
+  
+  const modelFilter = document.getElementById('model-filter');
+  if (modelFilter) modelFilter.value = '';
+  
+  const fileUploadArea = document.getElementById('file-upload-area');
+  if (fileUploadArea) {
+    fileUploadArea.innerHTML = `
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">
+        <p class="upload-title">Upload CSV file for Model Run</p>
+        <p class="upload-subtitle">Drag and drop your file here or click to browse</p>
+      </div>
+    `;
+  }
+  
+  const modelFileInput = document.getElementById('model-file-input');
+  if (modelFileInput) modelFileInput.value = '';
+  
+  updateRunModelButtonState();
 }
 
 function handleNavClick(e) {
@@ -182,7 +436,7 @@ function setupShapEventListeners() {
 
 function handleUploadClick(e) {
   e.preventDefault();
-  const fileInput = document.getElementById('file-input');
+  const fileInput = document.getElementById('model-file-input');
   if (fileInput) {
     fileInput.click();
   }
@@ -2057,14 +2311,6 @@ async function renderExperimentsTable() {
   let experimentsData = await getAllExperimentsFromAPI()
   tbody.innerHTML = experimentsData.map((exp, i) => `
     <tr data-exp='${encodeURIComponent(JSON.stringify(exp))}'>
-      ${compareMode ? `
-        <td class="compare-column">
-          <input type="checkbox"
-                class="compare-checkbox"
-                value="${exp.experiment_id}"
-                onchange="handleExperimentSelection(this)">
-        </td>` : ''
-      }
       <td>
         <a href="#" class="experiment-name">${exp.name}</a>
       </td>

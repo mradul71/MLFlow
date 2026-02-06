@@ -1,885 +1,1171 @@
+"""
+Complete ML Training Module with Hyperparameter Support
+Supports: Regression, Classification, and Clustering models
+Backend: scikit-learn
+All models use user-provided hyperparameters
+With proper MLflow run management for sequential training
+"""
+
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from typing import Dict, List, Any, Optional, Tuple
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import Ridge, Lasso, ElasticNet, LogisticRegression
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.ensemble import (
+    RandomForestRegressor, RandomForestClassifier,
+    GradientBoostingRegressor, GradientBoostingClassifier
+)
+from sklearn.cluster import KMeans, BisectingKMeans
 from sklearn.mixture import GaussianMixture
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import LinearSVC
-from sklearn.cluster import KMeans
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score,
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    silhouette_score
+    mean_absolute_error, mean_squared_error, r2_score,
+    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
+    silhouette_score, davies_bouldin_score, calinski_harabasz_score
 )
-
 import mlflow
 import mlflow.sklearn
-import mlflow.data
+import atexit
 
-def regression_run_linear(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
 
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
+# ============================================================================
+# MLFLOW RUN MANAGEMENT UTILITIES
+# ============================================================================
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+def _ensure_run_closed():
+    """
+    Ensure any active MLflow run is properly closed.
+    
+    This is critical for running multiple models sequentially to ensure
+    each model gets its own isolated run with proper metrics logging.
+    """
+    try:
+        if mlflow.active_run() is not None:
+            mlflow.end_run()
+            return True
+    except Exception as e:
+        print(f"Warning: Error closing MLflow run: {e}")
+    return False
 
-    model = LinearRegression()
-    model.fit(X_train, y_train)
 
-    y_pred = model.predict(X_test)
+def _cleanup_mlflow_on_exit():
+    """Register cleanup function to ensure MLflow runs are closed on exit"""
+    try:
+        if mlflow.active_run() is not None:
+            mlflow.end_run()
+    except:
+        pass
 
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_pred)
 
-    mlflow.set_experiment(experiment_type)
+# Register cleanup on exit
+atexit.register(_cleanup_mlflow_on_exit)
 
-    input_example = X_train.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "LinearRegression")
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("MAE", mae)
-        mlflow.log_metric("MSE", mse)
-        mlflow.log_metric("RMSE", rmse)
-        mlflow.log_metric("R2", r2)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
+# ============================================================================
+# MODEL FACTORY FUNCTIONS - Create models with hyperparameters
+# ============================================================================
+
+class ModelFactory:
+    """Factory class to create models with hyperparameters"""
+
+    @staticmethod
+    def create_linear_regression(hyperparameters: Dict[str, Any]):
+        """Create Linear Regression (Ridge/Lasso/ElasticNet)"""
+        regParam = hyperparameters.get("regParam", 0.0)
+        elasticNetParam = hyperparameters.get("elasticNetParam", 0.0)
+        maxIter = hyperparameters.get("maxIter", 400)
+        tol = hyperparameters.get("tol", 1e-6)
+        fitIntercept = hyperparameters.get("fitIntercept", True)
+        solver = hyperparameters.get("solver", "auto")
+
+        solver_map = {"auto": "auto", "normal": "svd", "l-bfgs": "lbfgs"}
+        mapped_solver = solver_map.get(solver, "auto")
+
+        if elasticNetParam == 0.0:
+            return Ridge(alpha=regParam, fit_intercept=fitIntercept, solver=mapped_solver, max_iter=maxIter, tol=tol)
+        elif elasticNetParam == 1.0:
+            return Lasso(alpha=regParam, fit_intercept=fitIntercept, max_iter=maxIter, tol=tol)
+        else:
+            return ElasticNet(alpha=regParam, l1_ratio=elasticNetParam, fit_intercept=fitIntercept, max_iter=maxIter, tol=tol)
+
+    @staticmethod
+    def create_decision_tree_regressor(hyperparameters: Dict[str, Any]):
+        """Create Decision Tree Regressor"""
+        return DecisionTreeRegressor(
+            max_depth=hyperparameters.get("maxDepth", 5),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            random_state=hyperparameters.get("seed", 42),
+            splitter=hyperparameters.get("splitter", "best")
         )
 
-        return {
-            "run_id": mlflow.active_run().info.run_id,
+    @staticmethod
+    def create_random_forest_regressor(hyperparameters: Dict[str, Any]):
+        """Create Random Forest Regressor"""
+        feature_subset_map = {
+            "auto": "sqrt", "sqrt": "sqrt", "log2": "log2", "all": None, "onethird": None
+        }
+        mapped_feature_subset = feature_subset_map.get(
+            hyperparameters.get("featureSubsetStrategy", "auto"), "sqrt"
+        )
+
+        return RandomForestRegressor(
+            n_estimators=hyperparameters.get("numTrees", 20),
+            max_depth=hyperparameters.get("maxDepth", 5),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            min_samples_split=hyperparameters.get("minInstancesPerNode", 2),
+            max_features=mapped_feature_subset,
+            max_samples=hyperparameters.get("subsamplingRate", 1.0),
+            random_state=hyperparameters.get("seed", 42),
+            n_jobs=-1
+        )
+
+    @staticmethod
+    def create_gradient_boosting_regressor(hyperparameters: Dict[str, Any]):
+        """Create Gradient Boosting Regressor"""
+        return GradientBoostingRegressor(
+            n_estimators=hyperparameters.get("maxIter", 20),
+            max_depth=hyperparameters.get("maxDepth", 5),
+            learning_rate=hyperparameters.get("stepSize", 0.1),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            min_samples_split=hyperparameters.get("minInstancesPerNode", 2),
+            subsample=hyperparameters.get("subsamplingRate", 1.0),
+            loss=hyperparameters.get("lossType", "squared"),
+            random_state=hyperparameters.get("seed", 42)
+        )
+
+    @staticmethod
+    def create_logistic_regression(hyperparameters: Dict[str, Any]):
+        """Create Logistic Regression"""
+        regParam = hyperparameters.get("regParam", 0.0)
+        elasticNetParam = hyperparameters.get("elasticNetParam", 0.0)
+        maxIter = hyperparameters.get("maxIter", 100)
+        tol = hyperparameters.get("tol", 1e-6)
+        fitIntercept = hyperparameters.get("fitIntercept", True)
+
+        # Determine penalty type based on elasticNetParam
+        if elasticNetParam == 0.0:
+            penalty = "l2"
+        elif elasticNetParam == 1.0:
+            penalty = "l1"
+        else:
+            penalty = "elasticnet"
+
+        return LogisticRegression(
+            C=1.0 / (regParam + 1e-10) if regParam > 0 else 1.0,
+            penalty=penalty,
+            fit_intercept=fitIntercept,
+            max_iter=maxIter,
+            tol=tol,
+            random_state=hyperparameters.get("seed", 42),
+            solver="saga" if penalty == "elasticnet" else "lbfgs"
+        )
+
+    @staticmethod
+    def create_decision_tree_classifier(hyperparameters: Dict[str, Any]):
+        """Create Decision Tree Classifier"""
+        return DecisionTreeClassifier(
+            max_depth=hyperparameters.get("maxDepth", 5),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            criterion=hyperparameters.get("impurity", "gini"),
+            random_state=hyperparameters.get("seed", 42)
+        )
+
+    @staticmethod
+    def create_random_forest_classifier(hyperparameters: Dict[str, Any]):
+        """Create Random Forest Classifier"""
+        print(hyperparameters)
+        feature_subset_map = {
+            "auto": "sqrt", "sqrt": "sqrt", "log2": "log2", "all": None, "onethird": None
+        }
+        mapped_feature_subset = feature_subset_map.get(
+            hyperparameters.get("featureSubsetStrategy", "auto"), "sqrt"
+        )
+
+        return RandomForestClassifier(
+            n_estimators=hyperparameters.get("numTrees", 20),
+            max_depth=hyperparameters.get("maxDepth", 5),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            min_samples_split=hyperparameters.get("minInstancesPerNode", 5),
+            max_features=mapped_feature_subset,
+            criterion=hyperparameters.get("impurity", "gini"),
+            random_state=hyperparameters.get("seed", 42),
+            n_jobs=-1
+        )
+
+    @staticmethod
+    def create_gradient_boosting_classifier(hyperparameters: Dict[str, Any]):
+        """Create Gradient Boosting Classifier"""
+        return GradientBoostingClassifier(
+            n_estimators=hyperparameters.get("maxIter", 20),
+            max_depth=hyperparameters.get("maxDepth", 5),
+            learning_rate=hyperparameters.get("stepSize", 0.1),
+            min_samples_leaf=hyperparameters.get("minInstancesPerNode", 1),
+            min_samples_split=hyperparameters.get("minInstancesPerNode", 2),
+            subsample=hyperparameters.get("subsamplingRate", 1.0),
+            loss=hyperparameters.get("lossType", "log_loss"),
+            random_state=hyperparameters.get("seed", 42)
+        )
+
+    @staticmethod
+    def create_naive_bayes(hyperparameters: Dict[str, Any]):
+        """Create Gaussian Naive Bayes"""
+        return GaussianNB(var_smoothing=hyperparameters.get("smoothing", 1e-9))
+
+    @staticmethod
+    def create_linear_svc(hyperparameters: Dict[str, Any]):
+        """Create Linear SVC"""
+        return LinearSVC(
+            C=hyperparameters.get("C", 1.0),
+            max_iter=hyperparameters.get("maxIter", 1000),
+            tol=hyperparameters.get("tol", 1e-3),
+            random_state=hyperparameters.get("seed", 42)
+        )
+
+    @staticmethod
+    def create_mlp_classifier(hyperparameters: Dict[str, Any]):
+        """Create MLP Classifier with Pipeline"""
+        layers = hyperparameters.get("layers", (100, 50))
+        
+        # Convert string to tuple if needed
+        if isinstance(layers, str):
+            import json
+            import ast
+            try:
+                # Try JSON format first: "[10, 15, 10, 2]"
+                layers = tuple(json.loads(layers))
+            except (json.JSONDecodeError, ValueError):
+                try:
+                    # Fall back to Python syntax: "(10, 15, 10, 2)"
+                    layers = tuple(ast.literal_eval(layers))
+                except (ValueError, SyntaxError):
+                    # Default if all else fails
+                    layers = (100, 50)
+        
+        return Pipeline([
+            ("scaler", StandardScaler()),
+            ("mlp", MLPClassifier(
+                hidden_layer_sizes=tuple(layers[1:-1]),
+                activation=hyperparameters.get("activation", "relu"),
+                solver=hyperparameters.get("solver", "adam"),
+                max_iter=hyperparameters.get("maxIter", 500),
+                tol=hyperparameters.get("tol", 1e-4),
+                random_state=hyperparameters.get("seed", 42)
+            ))
+        ])
+
+    @staticmethod
+    def create_ovr_classifier(base_classifier_name: str, hyperparameters: Dict[str, Any]):
+        """Create One-vs-Rest Classifier"""
+        base_models = {
+            "LogisticRegression": ModelFactory.create_logistic_regression,
+            "DecisionTreeClassifier": ModelFactory.create_decision_tree_classifier,
+            "RandomForestClassifier": ModelFactory.create_random_forest_classifier,
+            "GradientBoostingClassifier": ModelFactory.create_gradient_boosting_classifier,
+            "NaiveBayes": ModelFactory.create_naive_bayes,
+            "LinearSVC": ModelFactory.create_linear_svc
         }
 
-def regression_random_forest(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+        if base_classifier_name not in base_models:
+            raise ValueError(f"Unknown base classifier: {base_classifier_name}")
 
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
+        base_model = base_models[base_classifier_name](hyperparameters)
+        return OneVsRestClassifier(base_model)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    model = RandomForestRegressor(
-        n_estimators=100,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_pred)
-
-    mlflow.set_experiment(experiment_type)
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "RandomForestRegressor")
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("n_estimators", 100)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_metric("MAE", mae)
-        mlflow.log_metric("MSE", mse)
-        mlflow.log_metric("RMSE", rmse)
-        mlflow.log_metric("R2", r2)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
+    @staticmethod
+    def create_kmeans(hyperparameters: Dict[str, Any]):
+        """Create KMeans Clustering"""
+        return KMeans(
+            n_clusters=hyperparameters.get("k", 2),
+            max_iter=hyperparameters.get("maxIter", 20),
+            tol=hyperparameters.get("tol", 1e-4),
+            n_init=hyperparameters.get("n_init", 10),
+            random_state=hyperparameters.get("seed", 42),
+            algorithm="lloyd" if hyperparameters.get("initMode", "k-means||") == "k-means||" else "auto"
         )
 
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
+    @staticmethod
+    def create_gaussian_mixture(hyperparameters: Dict[str, Any]):
+        """Create Gaussian Mixture Model"""
+        return GaussianMixture(
+            n_components=hyperparameters.get("k", 2),
+            max_iter=hyperparameters.get("maxIter", 100),
+            tol=hyperparameters.get("tol", 1e-3),
+            covariance_type=hyperparameters.get("covarianceType", "full"),
+            random_state=hyperparameters.get("seed", 42)
+        )
 
-def regression_gbt_regressor(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+    @staticmethod
+    def create_lda(hyperparameters: Dict[str, Any]):
+        """Create Latent Dirichlet Allocation"""
+        return LatentDirichletAllocation(
+            n_components=hyperparameters.get("k", 10),
+            max_iter=hyperparameters.get("maxIter", 20),
+            learning_method=hyperparameters.get("optimizer", "online"),
+            random_state=hyperparameters.get("seed", 42)
+        )
 
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
+    @staticmethod
+    def create_bisecting_kmeans(hyperparameters: Dict[str, Any]):
+        """Create custom Bisecting K-Means"""
+        return BisectingKMeans(
+            n_clusters=hyperparameters.get("k", 3),
+            max_iter=hyperparameters.get("maxIter", 20),
+            tol=hyperparameters.get("tol", 1e-4),
+            n_init=hyperparameters.get("n_init", 10),
+            random_state=hyperparameters.get("seed", 42)
+        )
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
 
-    model = GradientBoostingRegressor(
-        n_estimators=100,
-        learning_rate=0.1,
-        max_depth=3,
-        random_state=42
-    )
+# ============================================================================
+# HYPERPARAMETER VALIDATION
+# ============================================================================
+
+class HyperparameterValidator:
+    """Validate hyperparameters before model training"""
+    
+    @staticmethod
+    def convert_hyperparameters(params):
+        """Convert string booleans to actual booleans"""
+        converted = {}
+        
+        for key, value in params.items():
+            # Handle string booleans from JSON
+            if isinstance(value, str):
+                if value.lower() == 'true':
+                    converted[key] = True
+                elif value.lower() == 'false':
+                    converted[key] = False
+                else:
+                    # Try to convert to int/float if possible
+                    try:
+                        if '.' in str(value):
+                            converted[key] = float(value)
+                        else:
+                            converted[key] = int(value)
+                    except ValueError:
+                        converted[key] = value
+            else:
+                converted[key] = value
+        
+        return converted
+
+    @staticmethod
+    def validate_linear_regression(hyperparameters: Dict[str, Any]):
+        """Validate Linear Regression hyperparameters"""
+        if "regParam" in hyperparameters and hyperparameters["regParam"] < 0:
+            raise ValueError("regParam must be >= 0")
+        if "elasticNetParam" in hyperparameters:
+            param = hyperparameters["elasticNetParam"]
+            if not (0 <= param <= 1):
+                raise ValueError("elasticNetParam must be between 0 and 1")
+        if "maxIter" in hyperparameters and hyperparameters["maxIter"] <= 0:
+            raise ValueError("maxIter must be > 0")
+        if "tol" in hyperparameters and hyperparameters["tol"] <= 0:
+            raise ValueError("tol must be > 0")
+
+    @staticmethod
+    def validate_tree_hyperparameters(hyperparameters: Dict[str, Any]):
+        """Validate tree-based model hyperparameters"""
+        if "maxDepth" in hyperparameters and hyperparameters["maxDepth"] <= 0:
+            raise ValueError("maxDepth must be > 0")
+        if "minInstancesPerNode" in hyperparameters and hyperparameters["minInstancesPerNode"] < 1:
+            raise ValueError("minInstancesPerNode must be >= 1")
+
+    @staticmethod
+    def validate_ensemble_hyperparameters(hyperparameters: Dict[str, Any]):
+        """Validate ensemble model hyperparameters"""
+        HyperparameterValidator.validate_tree_hyperparameters(hyperparameters)
+        if "numTrees" in hyperparameters and hyperparameters["numTrees"] <= 0:
+            raise ValueError("numTrees must be > 0")
+        if "subsamplingRate" in hyperparameters:
+            rate = hyperparameters["subsamplingRate"]
+            if not (0 < rate <= 1):
+                raise ValueError("subsamplingRate must be between 0 and 1")
+
+    @staticmethod
+    def validate_clustering_hyperparameters(hyperparameters: Dict[str, Any]):
+        """Validate clustering model hyperparameters"""
+        if "k" in hyperparameters and hyperparameters["k"] <= 0:
+            raise ValueError("k must be > 0")
+        if "maxIter" in hyperparameters and hyperparameters["maxIter"] <= 0:
+            raise ValueError("maxIter must be > 0")
+
+
+# ============================================================================
+# REGRESSION FUNCTIONS
+# ============================================================================
+
+def regression_run_linear(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Linear Regression (Ridge/Lasso/ElasticNet) with proper MLflow run management"""
+    
+    # ← KEY: Close any previous run before starting a new one
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxIter": 400, "regParam": 0.0, "elasticNetParam": 0.0, "tol": 1e-6, "fitIntercept": True}
+    
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_linear_regression(hyperparameters)
+
+    df = pd.read_csv(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42)
+
+    model = ModelFactory.create_linear_regression(hyperparameters)
     model.fit(X_train, y_train)
-
     y_pred = model.predict(X_test)
 
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_pred)
+    metrics_dict = _compute_regression_metrics(y_test, y_pred, metrics)
 
     mlflow.set_experiment(experiment_type)
     input_example = X_train.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "GradientBoostingRegressor")
-        mlflow.log_param("n_estimators", 100)
-        mlflow.log_param("learning_rate", 0.1)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("max_depth", 3)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_metric("MAE", mae)
-        mlflow.log_metric("MSE", mse)
-        mlflow.log_metric("RMSE", rmse)
-        mlflow.log_metric("R2", r2)
-        mlflow.log_artifact("data.csv", artifact_path="data")
+    run_id = None
+    try:
+        # ← KEY: Use try/finally to ensure run is closed
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "LinearRegression")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        # ← KEY: Always close the run
+        _ensure_run_closed()
 
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
+    return {"run_id": run_id, "metrics": metrics_dict}
 
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
 
-def regression_decision_tree(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+def regression_decision_tree(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Decision Tree Regressor with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxDepth": 5, "minInstancesPerNode": 1, "seed": 42}
+    
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_tree_hyperparameters(hyperparameters)
 
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
+    df = pd.read_csv(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42)
 
-    model = DecisionTreeRegressor(
-        random_state=42
-    )
+    model = ModelFactory.create_decision_tree_regressor(hyperparameters)
     model.fit(X_train, y_train)
-
     y_pred = model.predict(X_test)
 
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_pred)
+    metrics_dict = _compute_regression_metrics(y_test, y_pred, metrics)
 
     mlflow.set_experiment(experiment_type)
-
     input_example = X_train.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "DecisionTreeRegressor")
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("MAE", mae)
-        mlflow.log_metric("MSE", mse)
-        mlflow.log_metric("RMSE", rmse)
-        mlflow.log_metric("R2", r2)
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "DecisionTreeRegressor")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
 
-        mlflow.log_artifact("data.csv", artifact_path="data")
+    return {"run_id": run_id, "metrics": metrics_dict}
 
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
 
-def clustering_bisecting_kmeans(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+def regression_random_forest(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Random Forest Regressor with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"numTrees": 20, "maxDepth": 5, "minInstancesPerNode": 1, "subsamplingRate": 1.0}
+    
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_ensemble_hyperparameters(hyperparameters)
 
+    df = pd.read_csv(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42)
+
+    model = ModelFactory.create_random_forest_regressor(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    metrics_dict = _compute_regression_metrics(y_test, y_pred, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "RandomForestRegressor")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def regression_gbt_regressor(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Gradient Boosting Regressor with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxIter": 20, "maxDepth": 5, "stepSize": 0.1, "subsamplingRate": 1.0}
+    
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_ensemble_hyperparameters(hyperparameters)
+
+    df = pd.read_csv(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42)
+
+    model = ModelFactory.create_gradient_boosting_regressor(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    metrics_dict = _compute_regression_metrics(y_test, y_pred, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "GradientBoostingRegressor")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+# ============================================================================
+# CLASSIFICATION FUNCTIONS
+# ============================================================================
+
+def classification_logistic_regression(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Logistic Regression Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxIter": 100, "regParam": 0.0, "elasticNetParam": 0.0, "tol": 1e-6, "fitIntercept": True}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_linear_regression(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_logistic_regression(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else model.decision_function(X_test)
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "LogisticRegression")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_decision_tree(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Decision Tree Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxDepth": 5, "minInstancesPerNode": 1, "impurity": "gini", "seed": 42}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_tree_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_decision_tree_classifier(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "DecisionTreeClassifier")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_random_forest(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Random Forest Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"numTrees": 20, "maxDepth": 5, "minInstancesPerNode": 1, "impurity": "gini"}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_ensemble_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_random_forest_classifier(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "RandomForestClassifier")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_gbt_classifier(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Gradient Boosting Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxIter": 20, "maxDepth": 5, "stepSize": 0.1, "subsamplingRate": 1.0}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_ensemble_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_gradient_boosting_classifier(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "GradientBoostingClassifier")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_naive_bayes(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Gaussian Naive Bayes Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"smoothing": 1e-9}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_naive_bayes(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "GaussianNB")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_linear_svc(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Linear SVC Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"C": 1.0, "maxIter": 1000, "tol": 1e-3, "seed": 42}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_linear_svc(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.decision_function(X_test)
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "LinearSVC")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_mlp_classifier(experiment_type, run_type, dataset_level, metrics, targetColumn, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Multilayer Perceptron Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"layers": (10, 15, 10, 2), "activation": "relu", "solver": "adam", "maxIter": 500}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42)
+
+    model = ModelFactory.create_mlp_classifier(hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "MLPClassifier")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+def classification_ovr(experiment_type, run_type, dataset_level, metrics, targetColumn, base_classifier="LogisticRegression", hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """One-vs-Rest Classifier with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"maxIter": 1000, "regParam": 0.0}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+
+    df = _load_and_preprocess_classification_data(data_path)
+    X = df.drop(targetColumn, axis=1)
+    y = df[targetColumn]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=splitRatio, random_state=42, stratify=y)
+
+    model = ModelFactory.create_ovr_classifier(base_classifier, hyperparameters)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else model.decision_function(X_test)
+
+    metrics_dict = _compute_classification_metrics(y_test, y_pred, y_proba, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X_train.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", f"OneVsRest_{base_classifier}")
+            mlflow.log_param("base_classifier", base_classifier)
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            mlflow.log_param("Target Column", targetColumn)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+# ============================================================================
+# CLUSTERING FUNCTIONS
+# ============================================================================
+
+def clustering_kmeans(experiment_type, run_type, dataset_level, metrics, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """K-Means Clustering with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"k": 3, "maxIter": 20, "tol": 1e-4, "n_init": 10}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_clustering_hyperparameters(hyperparameters)
+
+    df = pd.read_csv(data_path)
     X = df.select_dtypes(include=[np.number])
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    def bisecting_kmeans(X, n_clusters=3, random_state=42):
-        clusters = {0: X}
+    model = ModelFactory.create_kmeans(hyperparameters)
+    labels = model.fit_predict(X_scaled)
 
-        for i in range(1, n_clusters):
-            largest_cluster_key = max(clusters, key=lambda k: len(clusters[k]))
-            data_to_split = clusters.pop(largest_cluster_key)
-
-            kmeans = KMeans(
-                n_clusters=2,
-                random_state=random_state,
-                n_init=10
-            )
-            labels = kmeans.fit_predict(data_to_split)
-
-            clusters[f"{largest_cluster_key}_0"] = data_to_split[labels == 0]
-            clusters[f"{largest_cluster_key}_1"] = data_to_split[labels == 1]
-
-        return clusters
-
-    clusters = bisecting_kmeans(X_scaled, n_clusters=3)
-
-    labels = np.zeros(len(X_scaled), dtype=int)
-    current_label = 0
-    start_idx = 0
-
-    for cluster_data in clusters.values():
-        size = len(cluster_data)
-        labels[start_idx:start_idx + size] = current_label
-        start_idx += size
-        current_label += 1
-
-    silhouette = silhouette_score(X_scaled, labels)
-    mlflow.set_experiment(experiment_type)
-
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "BisectingKMeans")
-        mlflow.log_param("n_clusters", 3)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("silhouette_score", silhouette)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def clustering_gaussian_mixture(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
-
-    X = df.select_dtypes(include=[np.number])
-
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    gmm = GaussianMixture(
-        n_components=3,
-        covariance_type="full",
-        random_state=42
-    )
-
-    gmm.fit(X_scaled)
-
-    labels = gmm.predict(X_scaled)
-    silhouette = silhouette_score(X_scaled, labels)
+    metrics_dict = _compute_clustering_metrics(X_scaled, labels, metrics)
 
     mlflow.set_experiment(experiment_type)
-
     input_example = X.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "GaussianMixture")
-        mlflow.log_param("n_components", 3)
-        mlflow.log_param("covariance_type", "full")
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("silhouette_score", silhouette)
-        mlflow.log_artifact("data.csv", artifact_path="data")
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "KMeans")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
 
-        mlflow.sklearn.log_model(
-            gmm,
-            name="model",
-            input_example=input_example
-        )
-    
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-    
-def clustering_kmeans(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+    return {"run_id": run_id, "metrics": metrics_dict}
 
+
+def clustering_bisecting_kmeans(experiment_type, run_type, dataset_level, metrics, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Bisecting K-Means Clustering with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"k": 3, "maxIter": 20, "tol": 1e-4, "n_init": 10}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_clustering_hyperparameters(hyperparameters)
+
+    df = pd.read_csv(data_path)
     X = df.select_dtypes(include=[np.number])
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    kmeans = KMeans(
-        n_clusters=3,
-        random_state=42,
-        n_init=10
-    )
+    model = ModelFactory.create_bisecting_kmeans(hyperparameters)
+    labels = model.fit_predict(X_scaled)
 
-    kmeans.fit(X_scaled)
-    labels = kmeans.labels_
-    silhouette = silhouette_score(X_scaled, labels)
+    metrics_dict = _compute_clustering_metrics(X_scaled, labels, metrics)
 
     mlflow.set_experiment(experiment_type)
-
     input_example = X.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "KMeans")
-        mlflow.log_param("n_clusters", 3)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("n_init", 10)
-        mlflow.log_metric("silhouette_score", silhouette)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_artifact("data.csv", artifact_path="data")
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "BisectingKMeans")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
 
-        mlflow.sklearn.log_model(
-            kmeans,
-            name="model",
-            input_example=input_example
-        )
+    return {"run_id": run_id, "metrics": metrics_dict}
 
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
 
-def clustering_lda(experiment_type, run_type, dataset_level):
-    df = pd.read_csv("data.csv")
+def clustering_gaussian_mixture(experiment_type, run_type, dataset_level, metrics, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Gaussian Mixture Model Clustering with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"k": 3, "maxIter": 100, "tol": 0.01, "covarianceType": "full"}
 
-    TEXT_COLUMN = "text"
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_clustering_hyperparameters(hyperparameters)
 
-    documents = df[TEXT_COLUMN].astype(str).tolist()
+    df = pd.read_csv(data_path)
+    X = df.select_dtypes(include=[np.number])
 
-    vectorizer = CountVectorizer(
-        max_df=0.95,
-        min_df=2,
-        stop_words="english"
-    )
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-    X = vectorizer.fit_transform(documents)
+    model = ModelFactory.create_gaussian_mixture(hyperparameters)
+    labels = model.fit_predict(X_scaled)
 
-    lda = LatentDirichletAllocation(
-        n_components=5,
-        learning_method="batch",
-        random_state=42
-    )
-
-    lda.fit(X)
-
-    perplexity = lda.perplexity(X)
+    metrics_dict = _compute_clustering_metrics(X_scaled, labels, metrics)
 
     mlflow.set_experiment(experiment_type)
+    input_example = X.iloc[:5]
 
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "LDA")
-        mlflow.log_param("n_topics", 5)
-        mlflow.log_param("learning_method", "batch")
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("perplexity", perplexity)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-        mlflow.sklearn.log_model(
-            lda,
-            name="model",
-            input_example=X[:5]
-        )
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "GaussianMixture")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
 
-def classification_decision_tree(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
+    return {"run_id": run_id, "metrics": metrics_dict}
 
-    # Create a copy to avoid modifying original data
+
+def clustering_lda(experiment_type, run_type, dataset_level, metrics, hyperparameters=None, splitRatio=0.2, data_path="data.csv"):
+    """Latent Dirichlet Allocation Clustering with proper MLflow run management"""
+    _ensure_run_closed()
+    
+    if hyperparameters is None:
+        hyperparameters = {"k": 3, "maxIter": 20, "optimizer": "online"}
+
+    hyperparameters = HyperparameterValidator.convert_hyperparameters(hyperparameters)
+    HyperparameterValidator.validate_clustering_hyperparameters(hyperparameters)
+
+    df = pd.read_csv(data_path)
+    X = df.select_dtypes(include=[np.number])
+    X_scaled = X.clip(lower=0)
+
+    model = ModelFactory.create_lda(hyperparameters)
+    topic_distributions = model.fit_transform(X_scaled)
+    labels = topic_distributions.argmax(axis=1)
+
+    metrics_dict = _compute_clustering_metrics(X_scaled, labels, metrics)
+
+    mlflow.set_experiment(experiment_type)
+    input_example = X.iloc[:5]
+
+    run_id = None
+    try:
+        with mlflow.start_run(run_name=run_type) as run:
+            mlflow.log_param("model_type", "LDA")
+            mlflow.log_param("dataset_level", dataset_level)
+            _log_hyperparameters(hyperparameters)
+            _log_metrics(metrics_dict)
+            mlflow.log_artifact(data_path, artifact_path="data")
+            mlflow.sklearn.log_model(model, name="model", input_example=input_example)
+            run_id = run.info.run_id
+    finally:
+        _ensure_run_closed()
+
+    return {"run_id": run_id, "metrics": metrics_dict}
+
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def _load_and_preprocess_classification_data(data_path: str) -> pd.DataFrame:
+    """Load and preprocess classification data"""
+    df = pd.read_csv(data_path)
     df = df.copy()
-    
-    # Encode categorical columns
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    # Handle any missing values (optional but recommended)
+
+    # Encode categorical columns if they exist
+    categorical_cols = df.select_dtypes(include=['object']).columns
+    for col in categorical_cols:
+        if col != 'Target':
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col])
+
+    # Fill missing values
     df = df.fillna(df.mean(numeric_only=True))
 
-    X = df.drop("Target", axis=1) 
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = DecisionTreeClassifier(
-        max_depth=5,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    mlflow.set_experiment(experiment_type)
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "DecisionTreeClassifier")
-        mlflow.log_param("max_depth", 5)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_metric("AUC", auc)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_LogisticRegression(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-
-    df = df_processed.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = LogisticRegression(
-        max_iter=1000,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    mlflow.set_experiment(experiment_type)
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "LogisticRegression")
-        mlflow.log_param("max_iter", 1000)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_metric("AUC", auc)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_random_forest(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-
-    df = df.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=10,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    mlflow.set_experiment(experiment_type)
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name=run_type):
-        mlflow.log_param("model_type", "RandomForestClassifier")
-        mlflow.log_param("n_estimators", 100)
-        mlflow.log_param("max_depth", 10)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_metric("AUC", auc)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_GBT_Classifier(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-    
-    df = df.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = GradientBoostingClassifier(
-        n_estimators=100,
-        learning_rate=0.1,
-        max_depth=3,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    mlflow.set_experiment("Classification")
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name="Gradient_Boosting_Classifier"):
-        mlflow.log_param("model_type", "GradientBoostingClassifier")
-        mlflow.log_param("n_estimators", 100)
-        mlflow.log_param("learning_rate", 0.1)
-        mlflow.log_param("max_depth", 3)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_metric("AUC", auc)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_LinearSVC(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-
-    df = df_processed.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = LinearSVC(
-        C=1.0,
-        max_iter=5000,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-
-    mlflow.set_experiment("Classification")
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name="Linear_SVC"):
-        mlflow.log_param("model_type", "LinearSVC")
-        mlflow.log_param("C", 1.0)
-        mlflow.log_param("max_iter", 5000)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("random_state", 42)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_MLPC(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-    df = df_processed.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("mlp", MLPClassifier(
-            hidden_layer_sizes=(100, 50),
-            activation="relu",
-            solver="adam",
-            max_iter=500,
-            random_state=42
-        ))
-    ])
-
-    pipeline.fit(X_train, y_train)
-
-    mlflow.set_experiment("Classification")
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name="MultilayerPerceptronClassifier"):
-        mlflow.log_param("model_type", "MultilayerPerceptronClassifier")
-        mlflow.log_param("hidden_layers", "(100, 50)")
-        mlflow.log_param("activation", "relu")
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("solver", "adam")
-        mlflow.log_param("max_iter", 500)
-
-        preds = pipeline.predict(X_test)
-
-        mlflow.log_metric("accuracy", accuracy_score(y_test, preds))
-        mlflow.log_metric("precision", precision_score(y_test, preds, average="weighted"))
-        mlflow.log_metric("recall", recall_score(y_test, preds, average="weighted"))
-        mlflow.log_metric("f1_score", f1_score(y_test, preds, average="weighted"))
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            pipeline,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_NaiveBayes(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-
-    df = df_processed.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1) 
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    model = GaussianNB()
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    mlflow.set_experiment("Classification")
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name="Naive_Bayes_Gaussian"):
-        mlflow.log_param("model_type", "GaussianNB")
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision", precision)
-        mlflow.log_metric("Recall", recall)
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_metric("F1", f1)
-        mlflow.log_metric("AUC", auc)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
-
-def classification_OVR(experiment_type, run_type, dataset_level):
-    df_processed = pd.read_csv("data.csv")
-
-    df = df_processed.copy()
-    
-    le_sex = LabelEncoder()
-    le_embarked = LabelEncoder()
-    
-    df['Sex'] = le_sex.fit_transform(df['Sex'])
-    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
-    
-    df = df.fillna(df.mean(numeric_only=True))
-
-    X = df.drop("Target", axis=1)
-    y = df["Target"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    base_model = LogisticRegression(max_iter=1000)
-
-    model = OneVsRestClassifier(base_model)
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average="weighted")
-    recall = recall_score(y_test, y_pred, average="weighted")
-    f1 = f1_score(y_test, y_pred, average="weighted")
-
-    mlflow.set_experiment("Classification")
-
-    input_example = X_train.iloc[:5]
-
-    with mlflow.start_run(run_name="One_vs_Rest_Classifier"):
-        mlflow.log_param("model_type", "OneVsRestClassifier")
-        mlflow.log_param("database_level", dataset_level)
-        mlflow.log_param("max_iter", 1000)
-        mlflow.log_metric("Accuracy", accuracy)
-        mlflow.log_metric("Precision_weighted", precision)
-        mlflow.log_metric("Recall_weighted", recall)
-        mlflow.log_metric("F1_weighted", f1)
-        mlflow.log_artifact("data.csv", artifact_path="data")
-
-        mlflow.sklearn.log_model(
-            model,
-            name="model",
-            input_example=input_example
-        )
-
-        return {
-            "run_id": mlflow.active_run().info.run_id,
-        }
+    return df
+
+
+def _compute_regression_metrics(y_test, y_pred, metrics: List[str]) -> Dict[str, float]:
+    """Compute regression metrics"""
+    metrics_dict = {}
+
+    if "MAE" in metrics:
+        metrics_dict["MAE"] = mean_absolute_error(y_test, y_pred)
+    if "MSE" in metrics:
+        metrics_dict["MSE"] = mean_squared_error(y_test, y_pred)
+    if "RMSE" in metrics:
+        mse = metrics_dict.get("MSE") or mean_squared_error(y_test, y_pred)
+        metrics_dict["RMSE"] = np.sqrt(mse)
+    if "R2 Score" in metrics:
+        metrics_dict["R2 Score"] = r2_score(y_test, y_pred)
+
+    return metrics_dict
+
+
+def _compute_classification_metrics(y_test, y_pred, y_proba, metrics: List[str]) -> Dict[str, float]:
+    """Compute classification metrics"""
+    metrics_dict = {}
+
+    if "Accuracy" in metrics:
+        metrics_dict["Accuracy"] = accuracy_score(y_test, y_pred)
+    if "Precision" in metrics:
+        metrics_dict["Precision"] = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+    if "Recall" in metrics:
+        metrics_dict["Recall"] = recall_score(y_test, y_pred, average="weighted", zero_division=0)
+    if "F1 Score" in metrics:
+        metrics_dict["F1 Score"] = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+    if "AUC ROC" in metrics:
+        try:
+            metrics_dict["AUC ROC"] = roc_auc_score(y_test, y_proba)
+        except:
+            metrics_dict["AUC ROC"] = 0.0
+
+    return metrics_dict
+
+
+def _compute_clustering_metrics(X, labels, metrics: List[str]) -> Dict[str, float]:
+    """Compute clustering metrics"""
+    metrics_dict = {}
+
+    if "Silhouette Score" in metrics:
+        metrics_dict["Silhouette Score"] = silhouette_score(X, labels)
+    if "Davies Bouldin Score" in metrics:
+        metrics_dict["Davies Bouldin Score"] = davies_bouldin_score(X, labels)
+    if "Calinski Harabasz Score" in metrics:
+        metrics_dict["Calinski Harabasz Score"] = calinski_harabasz_score(X, labels)
+
+    return metrics_dict
+
+
+def _log_hyperparameters(hyperparameters: Dict[str, Any]):
+    """Log hyperparameters to MLflow"""
+    for param_name, param_value in hyperparameters.items():
+        # Convert lists/tuples to strings for logging
+        if isinstance(param_value, (list, tuple)):
+            param_value = str(param_value)
+        mlflow.log_param(f"hyperparameter_{param_name}", param_value)
+
+
+def _log_metrics(metrics_dict: Dict[str, float]):
+    """Log metrics to MLflow"""
+    for metric_name, metric_value in metrics_dict.items():
+        mlflow.log_metric(metric_name, float(metric_value))

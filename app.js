@@ -58,13 +58,11 @@ let uploadedData = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOMContentLoaded fired');
   initializeNavigation();
   initializeExperiments();
   setupEventListeners();
   initializeModelRunSection();
-  
-  // Make functions globally accessible
+  initializeFileUpload();
   window.showView = showView;
   window.showExperimentDetail = showExperimentDetail;
   window.showComparison = showComparison;
@@ -75,6 +73,9 @@ document.addEventListener('DOMContentLoaded', function() {
   window.generateShapAnalysis = generateShapAnalysis;
   window.switchFeatureTab = switchFeatureTab;
   window.runModel = runModel;
+  window.initializeArchitecture = initializeArchitecture;
+  
+  showView('experiments');
 });
 
 // Navigation
@@ -82,30 +83,41 @@ function initializeNavigation() {
   const navLinks = document.querySelectorAll('.nav-link');
   
   navLinks.forEach(link => {
-    // Remove any existing event listeners
-    link.removeEventListener('click', handleNavClick);
-    // Add new event listener
-    link.addEventListener('click', handleNavClick);
+    const newLink = link.cloneNode(true);
+    link.parentNode.replaceChild(newLink, link);
+  });
+  
+  // Add fresh listeners
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const view = this.getAttribute('data-view');
+      
+      if (view) {
+        showView(view);
+        if (view === 'architecture') {
+          setTimeout(() => {
+            initializeArchitecture();
+          }, 100);
+        }
+      } else {
+        console.error('No view attribute found on navigation link');
+      }
+    });
   });
 }
 
 // Initialize model upload and type selection handlers
 function initializeModelRunSection() {
-  console.log('Initializing Model Run Section');
   const modelFilter = document.getElementById('model-filter');
   const modelFileInput = document.getElementById('model-file-input');
   const fileUploadArea = document.getElementById('file-upload-area');
-
-  console.log('Elements found:', {
-    modelFilter: !!modelFilter,
-    modelFileInput: !!modelFileInput,
-    fileUploadArea: !!fileUploadArea
-  });
   
   if (modelFilter) {
     modelFilter.addEventListener('change', function(e) {
       selectedModelType = e.target.value;
-      console.log('Model type selected:', selectedModelType);
       updateRunModelButtonState();
     });
   }
@@ -115,7 +127,6 @@ function initializeModelRunSection() {
     fileUploadArea.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Upload area clicked');
       if (modelFileInput) {
         modelFileInput.click();
       }
@@ -125,7 +136,6 @@ function initializeModelRunSection() {
   // Handle file input change
   if (modelFileInput) {
     modelFileInput.addEventListener('change', function(e) {
-      console.log('File input changed');
       if (e.target.files && e.target.files.length > 0) {
         handleModelFileUpload(e.target.files[0]);
       }
@@ -138,7 +148,6 @@ function initializeModelRunSection() {
       e.preventDefault();
       e.stopPropagation();
       fileUploadArea.classList.add('dragover');
-      console.log('Drag over');
     });
     
     fileUploadArea.addEventListener('dragleave', function(e) {
@@ -151,14 +160,12 @@ function initializeModelRunSection() {
       e.preventDefault();
       e.stopPropagation();
       fileUploadArea.classList.remove('dragover');
-      console.log('File dropped');
       
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleModelFileUpload(e.dataTransfer.files[0]);
       }
     });
   }
-  console.log('Model Run Section initialized');
 }
 
 function handleModelTypeSelection(e) {
@@ -192,15 +199,12 @@ function handleModelFileDrop(e) {
 }
 
 function handleModelFileUpload(file) {
-  console.log('handleModelFileUpload called with:', file.name);
-  
   if (!file.name.endsWith('.csv')) {
     alert('❌ Please upload a CSV file');
     return;
   }
   
   uploadedModelFile = file;
-  console.log('File stored:', uploadedModelFile.name);
   updateFileUploadUI(file.name);
   updateRunModelButtonState();
 }
@@ -247,21 +251,15 @@ function updateFileUploadUI(fileName) {
 function updateRunModelButtonState() {
   const runModelBtn = document.querySelector('.model-run-section .btn--primary');
   
-  console.log('Updating button state:');
-  console.log('  File:', uploadedModelFile ? uploadedModelFile.name : 'None');
-  console.log('  Model Type:', selectedModelType || 'None');
-  
   if (runModelBtn) {
     if (uploadedModelFile && selectedModelType) {
       runModelBtn.disabled = false;
       runModelBtn.style.opacity = '1';
       runModelBtn.style.cursor = 'pointer';
-      console.log('Button ENABLED');
     } else {
       runModelBtn.disabled = true;
       runModelBtn.style.opacity = '0.5';
       runModelBtn.style.cursor = 'not-allowed';
-      console.log('Button DISABLED');
     }
   } else {
     console.error('Run model button not found!');
@@ -355,18 +353,19 @@ function handleNavClick(e) {
 }
 
 function showView(viewName) {
-  // Hide all views
-  document.querySelectorAll('.view').forEach(view => {
+  const allViews = document.querySelectorAll('.view');
+  allViews.forEach(view => {
     view.classList.remove('active');
+    view.style.display = 'none'; // Force hide
   });
   
-  // Show selected view
+  // Show ONLY the target view
   const targetView = document.getElementById(`${viewName}-view`);
   if (targetView) {
     targetView.classList.add('active');
+    targetView.style.display = 'block'; // Force show
   } else {
     console.error(`Could not find view element: ${viewName}-view`);
-    return;
   }
   
   // Update navigation active state
@@ -374,24 +373,9 @@ function showView(viewName) {
     link.classList.remove('active');
   });
   
-  const activeNavLink = document.querySelector(`[data-view="${viewName}"]`);
+  const activeNavLink = document.querySelector(`.nav-link[data-view="${viewName}"]`);
   if (activeNavLink) {
     activeNavLink.classList.add('active');
-  } else {
-    console.error(`Could not find nav link for view: ${viewName}`);
-  }
-  
-  currentView = viewName;
-  
-  // Initialize view-specific content
-  if (viewName === 'experiments') {
-    renderExperimentsTable();
-  } else if (viewName === 'architecture') {
-    initializeArchitecture();
-  } else if (viewName === 'fairness') {
-    initializeFairness();
-  } else if (viewName === 'shap') {
-    initializeShap();
   }
 }
 
@@ -601,12 +585,7 @@ function generateDefaultShapVisualizations() {
       generateShapForceChart(uploadedShapFile);
       generateShapValuesTable(uploadedShapFile);
     } else {
-      // Try to fetch from path (if you have a default file)
-      // Or show a message to upload a file
       console.log('No file uploaded yet. Please upload a CSV file.');
-      
-      // Optionally, you can create empty/placeholder charts here
-      // or just leave them empty until a file is uploaded
     }
   }, 500);
 }
@@ -2010,7 +1989,6 @@ async function getRunArtifactsFromAPI(runId, path = '') {
 
     const response = await fetch(url.toString(), { method: 'GET' });
     const data = await response.json();
-    console.log("dataaaaa", data)
     return data.files || [];
   } catch (error) {
     console.error('Error fetching artifacts:', error.message);
@@ -2256,12 +2234,10 @@ function switchRunTab(tabName) {
 async function findCsvArtifactPath(runId, path = '', depth = 0) {
   const entries = await getRunArtifactsFromAPI(runId, path);
   const csv = entries.find(e => !e.is_dir && e.path.toLowerCase().endsWith('.csv'));
-  console.log(csv, "csv===>")
   if (csv) return csv.path;
   if (depth >= 3) return null;
   for (const dir of entries.filter(e => e.is_dir)) {
     const found = await findCsvArtifactPath(runId, dir.path, depth + 1);
-    console.log(found, "found===>")
     if (found) return found;
   }
   return null;
@@ -2507,7 +2483,6 @@ function switchExperimentDetailTab(tabName) {
 // Update showExperimentDetail to populate the runs tab
 async function showExperimentDetail(experiment) {
     const runs = await getExperimentDetailsFromAPI(experiment.experiment_id);
-    console.log("Runs: ", runs)
 
     if (!runs) {
         console.error('Experiment not found:', experiment.experiment_id);
@@ -3438,27 +3413,39 @@ function createFairnessChart() {
 function initializeFileUpload() {
   const fileUploadArea = document.getElementById('file-upload-area');
   const fileInput = document.getElementById('file-input');
-  
-  if (!fileUploadArea || !fileInput) {
-    alert('ERROR: Elements not found!');
-    return;
-  }
-  
-  // Direct click handler - simplest possible
-  fileUploadArea.onclick = function() {
-    fileInput.click();
-  };
-  
-  // File selected handler
-  fileInput.onchange = function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      handleFileUpload(file);
+
+  if (!fileUploadArea || !fileInput) return;
+
+  fileUploadArea.addEventListener('click', () => fileInput.click());
+
+  fileUploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.add('dragging');
+  });
+
+  fileUploadArea.addEventListener('dragleave', () => {
+    fileUploadArea.classList.remove('dragging');
+  });
+
+  fileUploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.remove('dragging');
+
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFileUpload(e.target.files[0]);
     }
-  };
+  });
 }
 
+
 async function handleFileUpload(file) {
+  const fileUploadArea = document.getElementById('file-upload-area');
+  fileUploadArea.classList.add('loading');
   
   if (!file.name.endsWith('.csv')) {
     alert('Please upload a CSV file');
@@ -3494,6 +3481,8 @@ async function handleFileUpload(file) {
         <p class="upload-subtitle" style="color: var(--color-success); margin-top: 8px;">✓ All 5 charts generated</p>
       </div>
     `;
+    fileUploadArea.classList.remove('loading');
+    fileUploadArea.classList.add('uploaded');
     
   } catch (error) {
     console.error('=== ERROR IN FILE UPLOAD ===');

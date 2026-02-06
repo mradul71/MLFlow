@@ -7,6 +7,766 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+/* Multi-Model Selection Styles */
+.multi-model-container {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 40px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.multi-model-header {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: slideDown 0.6s ease-out;
+}
+
+.multi-model-header h2 {
+    margin: 0;
+    font-size: 28px;
+    color: #1a1a1a;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    margin: 10px 0 0 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.multi-model-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+@media (max-width: 1200px) {
+    .multi-model-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+.selection-column {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.column-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-info {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-success {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.search-box {
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #1FB8CD;
+    box-shadow: 0 0 0 3px rgba(31, 184, 205, 0.1);
+}
+
+.model-categories {
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.model-categories::-webkit-scrollbar {
+    width: 6px;
+}
+
+.model-categories::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.model-categories::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.model-categories::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.model-category {
+    margin-bottom: 15px;
+}
+
+.category-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.category-toggle:hover {
+    background: #efefef;
+}
+
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    font-size: 12px;
+}
+
+.category-toggle.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.category-name {
+    flex: 1;
+    font-size: 14px;
+}
+
+.category-count {
+    background: #1FB8CD;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.category-models {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    padding-left: 10px;
+    max-height: 500px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.category-models.collapsed {
+    max-height: 0;
+    margin-top: 0;
+    overflow: hidden;
+}
+
+.model-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.model-checkbox:hover {
+    background: #f5f5f5;
+}
+
+.model-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1FB8CD;
+}
+
+.checkbox-label {
+    font-size: 13px;
+    color: #333;
+    flex: 1;
+}
+
+.model-checkbox input[type="checkbox"]:checked ~ .checkbox-label {
+    color: #1FB8CD;
+    font-weight: 500;
+}
+
+/* Metrics Panel */
+.metrics-panel {
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.metrics-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.metrics-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.metrics-panel::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #999;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.empty-text {
+    margin: 0;
+    font-size: 14px;
+    text-align: center;
+}
+
+.metric-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-left: 3px solid #1FB8CD;
+    border-radius: 6px;
+    animation: fadeIn 0.3s ease;
+}
+
+.metric-group-header {
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    cursor: pointer;
+}
+
+.metric-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #1FB8CD;
+}
+
+.metric-checkbox label {
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+}
+
+.metric-checkbox input[type="checkbox"]:checked ~ label {
+    color: #1FB8CD;
+    font-weight: 500;
+}
+
+/* Dataset Upload Card */
+.dataset-upload-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+    animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.upload-header {
+    margin-bottom: 20px;
+    color: #1a1a1a !important;
+}
+
+.upload-header h3 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a !important;
+}
+
+.upload-subtitle {
+    margin: 0;
+    color: #999;
+    font-size: 13px;
+}
+
+.file-upload-area {
+    border: 2px dashed #1FB8CD;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8feff;
+}
+
+.file-upload-area:hover {
+    border-color: #17a8be;
+    background: #ecf8fb;
+}
+
+.upload-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.upload-text p {
+    margin: 0;
+}
+
+.upload-title {
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.upload-subtitle {
+    color: #999;
+    font-size: 12px;
+}
+
+.file-input.hidden {
+    display: none;
+}
+
+.upload-status {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    margin-top: 15px;
+    animation: slideIn 0.3s ease;
+}
+
+.upload-status.hidden {
+    display: none;
+}
+
+.status-icon {
+    font-size: 24px;
+}
+
+.status-info {
+    flex: 1;
+}
+
+.status-filename {
+    margin: 0;
+    font-weight: 600;
+    color: #2e7d32;
+    font-size: 13px;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.btn--large {
+    flex: 1;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.btn--primary {
+    background: linear-gradient(135deg, #1FB8CD 0%, #17a8be 100%);
+    color: white;
+}
+
+.btn--primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(31, 184, 205, 0.3);
+}
+
+.btn--primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn--secondary {
+    background: white;
+    border: 1px solid #ddd;
+    color: #333;
+    padding: 10px 20px;
+}
+
+.btn--secondary:hover {
+    background: #f5f5f5;
+}
+
+.btn--outline {
+    background: transparent;
+    border: 1px solid #1FB8CD;
+    color: #1FB8CD;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.btn--outline:hover {
+    background: #f0feff;
+}
+
+.btn--sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Summary Section */
+.summary-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    animation: slideUp 0.4s ease;
+}
+
+.summary-section.hidden {
+    display: none;
+}
+
+.summary-card {
+    border-left: 3px solid #1FB8CD;
+    padding: 15px;
+}
+
+.summary-card h4 {
+    margin: 0 0 15px 0;
+    color: #1a1a1a;
+    font-size: 14px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.summary-value {
+    color: #1FB8CD;
+    font-weight: 600;
+}
+
+/* Hyperparameters Panel Styles */
+.hyperparameters-panel {
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.hyperparameters-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.hyperparameters-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.hyperparameters-panel::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.hyperparameters-panel::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.model-hyperparams {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-left: 3px solid #1FB8CD;
+    border-radius: 6px;
+    animation: fadeIn 0.3s ease;
+}
+
+.model-hyperparams-header {
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hyperparam-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.hyperparam-item:last-child {
+    border-bottom: none;
+}
+
+.hyperparam-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.hyperparam-description {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 6px;
+    font-style: italic;
+}
+
+.hyperparam-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.hyperparam-input:focus {
+    outline: none;
+    border-color: #1FB8CD;
+    box-shadow: 0 0 0 3px rgba(31, 184, 205, 0.1);
+}
+
+.hyperparam-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hyperparam-select:focus {
+    outline: none;
+    border-color: #1FB8CD;
+    box-shadow: 0 0 0 3px rgba(31, 184, 205, 0.1);
+}
+
+.hyperparam-range-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.hyperparam-range-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.hyperparam-range-label {
+    font-size: 11px;
+    color: #666;
+    font-weight: 500;
+    min-width: 30px;
+}
+
+.hyperparam-value-display {
+    font-size: 11px;
+    color: #1FB8CD;
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.hyperparam-checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    cursor: pointer;
+}
+
+.hyperparam-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1FB8CD;
+    flex-shrink: 0;
+}
+
+.hyperparam-checkbox-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.hyperparam-checkbox:hover + .hyperparam-checkbox-label {
+    color: #1FB8CD;
+}
+
+.hyperparam-checkbox:checked + .hyperparam-checkbox-label {
+    color: #1FB8CD;
+    font-weight: 700;
+}
+
+.hyperparam-control-wrapper {
+    display: none;
+    animation: slideDown 0.2s ease-out;
+}
+
+.hyperparam-control-wrapper.visible {
+    display: block;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+        overflow: visible;
+    }
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+</style>
+<script src="hyperparameters.js"></script>
 </head>
 <body>
     <!-- Navigation Header -->
@@ -29,7 +789,6 @@
     </header>
 
     <main class="main-content">
-        <!-- SHAP Analysis View -->
          <p id="main-heading-web" style="text-align: center;">Custom Dashboard for Machine Learning Model Experiment Tracking and Explainability</p>
         <div id="shap-view" class="view">
             <div class="page-header">
@@ -274,41 +1033,488 @@
             </div>
 
             <div class="model-run-section">
-                <div class="card">
-                    <div class="card__body">
-                        <div class="filters-grid">
-                            <div class="filters-group">
-                                <label class="form-label">Select Model Type</label>
-                                <select class="form-control" id="model-filter">
-                                    <option value="">-- Select a Model --</option>
-                                    <option value="Regression_LinearRegression">Linear Regression</option>
-                                    <option value="Regression_GBTRegressor">GBT Regressor</option>
-                                    <option value="Regression_RandomForest">Random Forest (Regression)</option>
-                                    <option value="Regression_DecisionTree">Decision Tree (Regression)</option>
-                                    <option value="Clustering_BisectingKMeans">Bisecting KMeans</option>
-                                    <option value="Clustering_GaussianMixture">Gaussian Mixture</option>
-                                    <option value="Clustering_LDA">Latent Dirichlet Allocation</option>
-                                    <option value="Clustering_KMeans">KMeans</option>
-                                    <option value="Classification_LogisticRegression">Logistic Regression</option>
-                                    <option value="Classification_DecisionTree">Decision Tree</option>
-                                    <option value="Classification_RandomForest">Random Forest (Classification)</option>
-                                    <option value="Classification_GBTClassifier">GBT Classifier</option>
-                                    <option value="Classification_LinearSVC">Linear SVC Classifier</option>
-                                    <option value="Classification_MLPC">Multilayer Perceptron Classifier</option>
-                                    <option value="Classification_NaiveBayes">Naive Bayes Classifier</option>
-                                    <option value="Classification_OVR">One Vs Rest Classifier</option>
-                                </select>
+                <div class="multi-model-container">
+                    <!-- Header -->
+                    <div class="multi-model-header">
+                        <h2>🚀 Batch Model Training</h2>
+                        <p class="header-subtitle">Select models, configure metrics, and run experiments simultaneously</p>
+                    </div>
+
+                    <!-- Two Column Layout -->
+                    <div class="multi-model-grid">
+                        <!-- Left Column: Model Selection -->
+                        <div class="selection-column">
+                            <div class="column-header">
+                                <h3>Step 1: Select Models</h3>
+                                <span class="badge badge-info" id="model-count">0 selected</span>
                             </div>
-                            <div class="filter-group" style="max-width: 150px; display: flex; align-items: flex-end; margin-top: 25px;">
-                                <button class="btn btn--primary" onclick="runModel()" disabled style="width: 100%; opacity: 0.5; cursor: not-allowed;">
-                                    🚀 Run Model
-                                </button>
+
+                            <div class="search-box">
+                                <input 
+                                    type="text" 
+                                    id="model-search" 
+                                    class="form-control" 
+                                    placeholder="🔍 Search models..."
+                                >
+                            </div>
+
+                            <div class="model-categories">
+                                <!-- Regression Models -->
+                                <div class="model-category">
+                                    <div class="category-toggle" onclick="toggleCategory(this)">
+                                        <span class="toggle-icon">▼</span>
+                                        <span class="category-name">📊 Regression</span>
+                                        <span class="category-count" data-category="Regression">0</span>
+                                    </div>
+                                    <div class="category-models" data-category="Regression" style="display: block;">
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Regression_LinearRegression" data-category="Regression">
+                                            <span class="checkbox-label">Linear Regression</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Regression_GBTRegressor" data-category="Regression">
+                                            <span class="checkbox-label">GBT Regressor</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Regression_RandomForest" data-category="Regression">
+                                            <span class="checkbox-label">Random Forest (Regression)</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Regression_DecisionTree" data-category="Regression">
+                                            <span class="checkbox-label">Decision Tree (Regression)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Classification Models -->
+                                <div class="model-category">
+                                    <div class="category-toggle" onclick="toggleCategory(this)">
+                                        <span class="toggle-icon">▼</span>
+                                        <span class="category-name">🎯 Classification</span>
+                                        <span class="category-count" data-category="Classification">0</span>
+                                    </div>
+                                    <div class="category-models" data-category="Classification" style="display: block;">
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_LogisticRegression" data-category="Classification">
+                                            <span class="checkbox-label">Logistic Regression</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_DecisionTree" data-category="Classification">
+                                            <span class="checkbox-label">Decision Tree</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_RandomForest" data-category="Classification">
+                                            <span class="checkbox-label">Random Forest (Classification)</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_GBTClassifier" data-category="Classification">
+                                            <span class="checkbox-label">GBT Classifier</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_LinearSVC" data-category="Classification">
+                                            <span class="checkbox-label">Linear SVC Classifier</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_MLPC" data-category="Classification">
+                                            <span class="checkbox-label">Multilayer Perceptron</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_NaiveBayes" data-category="Classification">
+                                            <span class="checkbox-label">Naive Bayes Classifier</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Classification_OVR" data-category="Classification">
+                                            <span class="checkbox-label">One Vs Rest Classifier</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Clustering Models -->
+                                <div class="model-category">
+                                    <div class="category-toggle" onclick="toggleCategory(this)">
+                                        <span class="toggle-icon">▼</span>
+                                        <span class="category-name">👥 Clustering</span>
+                                        <span class="category-count" data-category="Clustering">0</span>
+                                    </div>
+                                    <div class="category-models" data-category="Clustering" style="display: block;">
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Clustering_BisectingKMeans" data-category="Clustering">
+                                            <span class="checkbox-label">Bisecting KMeans</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Clustering_GaussianMixture" data-category="Clustering">
+                                            <span class="checkbox-label">Gaussian Mixture</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Clustering_LDA" data-category="Clustering">
+                                            <span class="checkbox-label">Latent Dirichlet Allocation</span>
+                                        </label>
+                                        <label class="model-checkbox">
+                                            <input type="checkbox" class="model-select" data-model="Clustering_KMeans" data-category="Clustering">
+                                            <span class="checkbox-label">KMeans</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <!-- <input type="file" id="model-file-input" accept=".csv" class="model-file-input"> -->
-                         <div class="form-group" style="margin-top: 20px;">
-                            <label class="form-label">Upload Dataset (CSV)</label>
+
+                        <!-- Right Column: Metric Selection -->
+                        <div class="selection-column">
+                            <div class="column-header">
+                                <h3>Step 2: Select Metrics</h3>
+                                <span class="badge badge-success" id="metric-count">0 selected</span>
+                            </div>
+
+                            <div id="metrics-panel" class="metrics-panel">
+                                <div class="empty-state">
+                                    <p class="empty-icon">📋</p>
+                                    <p class="empty-text">Select models to see available metrics</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="hyperparameters-section" class="dataset-upload-card">
+                        <div class="upload-header">
+                            <h3>Step 3: Configure Hyperparameters (Optional)</h3>
+                            <p class="upload-subtitle">Fine-tune model hyperparameters for each selected model</p>
+                        </div>
+
+                        <div id="hyperparameters-panel" class="hyperparameters-panel">
+                            <div class="empty-state">
+                                <p class="empty-icon">⚙️</p>
+                                <p class="empty-text">Select models and metrics to configure hyperparameters</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dataset Upload Section -->
+                    <div class="dataset-upload-card">
+                        <div class="upload-header">
+                            <h3>Step 4: Upload Dataset</h3>
+                            <p class="upload-subtitle">CSV file with your training data</p>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
                             <input type="file" id="model-file-input" accept=".csv" class="form-control">
+                        </div>
+
+                        <div id="file-upload-status" class="upload-status hidden">
+                            <div class="status-icon">✅</div>
+                            <div class="status-info">
+                                <p class="status-filename" id="uploaded-filename"></p>
+                                <button class="btn btn--sm btn--outline" onclick="resetFileUpload()">Change file</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 25px; padding-top: 25px; border-top: 2px solid #f0f0f0;">
+                            <label style="display: block; margin-bottom: 15px; font-weight: 600; color: #1a1a1a;">
+                                🧹 Data Preprocessing Method
+                            </label>
+                            <p style="margin: 0 0 15px 0; color: #666; font-size: 13px;">
+                                Choose how to handle missing values (null/NaN) in your dataset before training
+                            </p>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <!-- Option 1: Remove Null Values -->
+                                <div style="
+                                    padding: 16px;
+                                    border: 2px solid #e0e0e0;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    background: white;
+                                " onclick="selectPreprocessingOption('remove', this)" id="preprocess-remove-card">
+                                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                        <input 
+                                            type="radio" 
+                                            id="preprocess-remove" 
+                                            name="preprocessingOption" 
+                                            value="remove"
+                                            checked
+                                            style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: #1FB8CD;"
+                                            onchange="selectPreprocessingOption('remove', document.getElementById('preprocess-remove-card'))"
+                                        >
+                                        <div style="flex: 1;">
+                                            <label for="preprocess-remove" style="
+                                                display: block;
+                                                font-weight: 600;
+                                                color: #1a1a1a;
+                                                margin-bottom: 6px;
+                                                cursor: pointer;
+                                            ">
+                                                ❌ Remove Rows with Nulls
+                                            </label>
+                                            <p style="
+                                                margin: 0;
+                                                font-size: 12px;
+                                                color: #666;
+                                                line-height: 1.5;
+                                            ">
+                                                Deletes entire rows containing any missing values. Best for large datasets where data loss is acceptable.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Option 2: Fill with Mean/Mode -->
+                                <div style="
+                                    padding: 16px;
+                                    border: 2px solid #e0e0e0;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    background: white;
+                                " onclick="selectPreprocessingOption('fill', this)" id="preprocess-fill-card">
+                                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                        <input 
+                                            type="radio" 
+                                            id="preprocess-fill" 
+                                            name="preprocessingOption" 
+                                            value="fill"
+                                            style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: #1FB8CD;"
+                                            onchange="selectPreprocessingOption('fill', document.getElementById('preprocess-fill-card'))"
+                                        >
+                                        <div style="flex: 1;">
+                                            <label for="preprocess-fill" style="
+                                                display: block;
+                                                font-weight: 600;
+                                                color: #1a1a1a;
+                                                margin-bottom: 6px;
+                                                cursor: pointer;
+                                            ">
+                                                ✅ Fill with Mean/Mode
+                                            </label>
+                                            <p style="
+                                                margin: 0;
+                                                font-size: 12px;
+                                                color: #666;
+                                                line-height: 1.5;
+                                            ">
+                                                Replaces missing values with column averages (numeric) or most frequent values (categorical). Preserves all data.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Selected Option Display -->
+                            <div id="preprocessing-selected" style="
+                                margin-top: 15px;
+                                padding: 12px;
+                                background: #f0feff;
+                                border-left: 3px solid #1FB8CD;
+                                border-radius: 4px;
+                                display: none;
+                            ">
+                                <p style="margin: 0; font-size: 13px; color: #1FB8CD; font-weight: 600;">
+                                    ✓ Preprocessing: <span id="selected-preprocessing-text">Not selected</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Column Selection Section -->
+                    <div id="target-column-section" class="dataset-upload-card" style="display: none;">
+                        <div class="upload-header">
+                            <h3>Select Target Column</h3>
+                            <p class="upload-subtitle">Choose the column you want to predict (not required for clustering)</p>
+                        </div>
+
+                        <div id="target-column-selection">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!--split ratio selection -->
+                    <div id="split-ratio-selection" class="dataset-upload-card">
+                        <div class="upload-header">
+                            <h3>Data Split Ratio</h3>
+                        </div>
+
+                        <p style="margin: 0 0 15px 0; color: #666; font-size: 13px;">
+                            Choose the ratio to split your dataset into training and testing sets.
+                        </p>
+
+                        <div style="
+                            padding: 16px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 8px;
+                            background: white;
+                            max-width: 300px;
+                        ">
+                            <label for="split-ratio" style="
+                                display: block;
+                                font-weight: 600;
+                                color: #1a1a1a;
+                                margin-bottom: 8px;
+                            ">
+                                Test Split Ratio
+                            </label>
+
+                            <input
+                                type="number"
+                                id="split-ratio"
+                                name="splitRatio"
+                                value="0.2"
+                                min="0.05"
+                                max="100"
+                                step="0.05"
+                                onchange="selectSplitRatio(document.getElementById('split-ratio'), 0.2)"
+                                style="
+                                    width: 100%;
+                                    padding: 10px;
+                                    font-size: 14px;
+                                    border: 1px solid #ccc;
+                                    border-radius: 6px;
+                                    outline: none;
+                                "
+                            >
+
+                            <p style="
+                                margin: 8px 0 0 0;
+                                font-size: 12px;
+                                color: #666;
+                            ">
+                                Enter a value greater than 0 and up to 100 (e.g., 0.2 for 20% test data).
+                            </p>
+                        </div>
+                    </div>
+                    <div class="dataset-upload-card" style="margin-top: 25px; padding-top: 25px; border-top: 2px solid #f0f0f0;">
+                        <label style="display: block; margin-bottom: 15px; font-weight: 600; color: #1a1a1a;">
+                            🔀 Data Split Method
+                        </label>
+                        <p style="margin: 0 0 15px 0; color: #666; font-size: 13px;">
+                            Choose how to split your data into training and testing sets
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <!-- Option 1: Random Split -->
+                            <div style="
+                                padding: 16px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                background: white;
+                            " id="split-random-card">
+                                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                    <input 
+                                        type="radio" 
+                                        id="split-random" 
+                                        name="splitType" 
+                                        value="random"
+                                        checked
+                                        onclick="selectSplitType(this.value)"
+                                        style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: #1FB8CD;"
+                                    >
+                                    <div style="flex: 1;">
+                                        <label for="split-random" style="
+                                            display: block;
+                                            font-weight: 600;
+                                            color: #1a1a1a;
+                                            margin-bottom: 6px;
+                                            cursor: pointer;
+                                        ">
+                                            🎲 Random Split
+                                        </label>
+                                        <p style="
+                                            margin: 0;
+                                            font-size: 12px;
+                                            color: #666;
+                                            line-height: 1.5;
+                                        ">
+                                            Randomly shuffle data before splitting. Best for most ML tasks to ensure unbiased training/testing.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Option 2: Split in Order -->
+                            <div style="
+                                padding: 16px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                background: white;
+                            " id="split-sequential-card">
+                                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                    <input 
+                                        type="radio" 
+                                        id="split-sequential" 
+                                        name="splitType" 
+                                        value="sequential"
+                                        onclick="selectSplitType(this.value)"
+                                        style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: #1FB8CD;"
+                                    >
+                                    <div style="flex: 1;">
+                                        <label for="split-sequential" style="
+                                            display: block;
+                                            font-weight: 600;
+                                            color: #1a1a1a;
+                                            margin-bottom: 6px;
+                                            cursor: pointer;
+                                        ">
+                                            📊 Split in Order
+                                        </label>
+                                        <p style="
+                                            margin: 0;
+                                            font-size: 12px;
+                                            color: #666;
+                                            line-height: 1.5;
+                                        ">
+                                            Maintain original data order. Useful for time-series data or when order matters.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Split Type Display -->
+                        <div id="split-type-selected" style="
+                            margin-top: 15px;
+                            padding: 12px;
+                            background: #f0feff;
+                            border-left: 3px solid #1FB8CD;
+                            border-radius: 4px;
+                            display: none;
+                        ">
+                            <p style="margin: 0; font-size: 13px; color: #1FB8CD; font-weight: 600;">
+                                ✓ Split Method: <span id="selected-split-type-text">Not selected</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn--secondary" onclick="clearAllSelections()">
+                        Clear All
+                    </button>
+                    <button 
+                        class="btn btn--primary btn--large" 
+                        id="run-models-btn" 
+                        onclick="runMultipleModels()" 
+                        disabled
+                    >
+                        🚀 Run Models
+                    </button>
+                </div>
+
+                <!-- Summary Section -->
+                <div id="summary-section" class="summary-section hidden">
+                    <div class="summary-card">
+                        <h4>Execution Summary</h4>
+                        <div class="summary-item">
+                            <span class="summary-label">Models to Run:</span>
+                            <span class="summary-value" id="summary-models">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Total Metrics:</span>
+                            <span class="summary-value" id="summary-metrics">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Dataset:</span>
+                            <span class="summary-value" id="summary-file">Not selected</span>
                         </div>
                     </div>
                 </div>
@@ -337,31 +1543,31 @@
 
         <!-- Experiment Detail View -->
         <div id="experiment-detail-view" class="view">
-    <div class="page-header">
-        <button class="btn btn--outline" onclick="showView('experiments')">← Back to Experiments</button>
-        <h2 id="experiment-detail-title">Experiment Details</h2>
-    </div>
+            <div class="page-header">
+                <button class="btn btn--outline" onclick="showView('experiments')">← Back to Experiments</button>
+                <h2 id="experiment-detail-title">Experiment Details</h2>
+            </div>
 
-    <!-- Tab Navigation -->
-    <div class="tabs" id="experiment-tabs-container" style="margin-bottom: 20px;">
-        <button class="feature-tab active" onclick="switchExperimentDetailTab('runs')">Runs</button>
-        <button class="feature-tab" onclick="switchExperimentDetailTab('comparison')">Comparison</button>
-    </div>
+            <!-- Tab Navigation -->
+            <div class="tabs" id="experiment-tabs-container" style="margin-bottom: 20px;">
+                <button class="feature-tab active" onclick="switchExperimentDetailTab('runs')">Runs</button>
+                <button class="feature-tab" onclick="switchExperimentDetailTab('comparison')">Comparison</button>
+            </div>
 
-    <!-- Runs Tab Content -->
-    <div id="runs-tab-content" class="feature-tab-content active">
-        <div class="experiment-detail-content" id="experiment-detail-content">
-            <!-- Will be populated by JavaScript -->
+            <!-- Runs Tab Content -->
+            <div id="runs-tab-content" class="feature-tab-content active">
+                <div class="experiment-detail-content" id="experiment-detail-content">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Comparison Tab Content -->
+            <div id="comparison-tab-content" class="feature-tab-content">
+                <div id="experiment-comparison-content">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
         </div>
-    </div>
-
-    <!-- Comparison Tab Content -->
-    <div id="comparison-tab-content" class="feature-tab-content">
-        <div id="experiment-comparison-content">
-            <!-- Will be populated by JavaScript -->
-        </div>
-    </div>
-</div>
 
         <!-- Run Detail View -->
         <div id="run-detail-view" class="view">
@@ -477,6 +1683,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="app.js"></script>
+    <script src="multimodel.js"></script>
     <script>
 // Function to switch between tabs in experiment detail view
 function switchExperimentDetailTab(tabName) {
@@ -514,7 +1721,7 @@ function switchExperimentDetailTab(tabName) {
 // Update showExperimentDetail to populate the runs tab
 async function showExperimentDetail(experiment) {
     const runs = await getExperimentDetailsFromAPI(experiment.experiment_id);
-    console.log("Runs: ", runs)
+    console.log(runs)
 
     if (!runs) {
         console.error('Experiment not found:', experiment.experiment_id);
@@ -566,8 +1773,8 @@ async function showExperimentDetail(experiment) {
                                             <td>
                                                 <span class="status-badge ${run.info.status.toLowerCase()}">${run.info.status}</span>
                                             </td>
-                                            <td>${run.data.params && run.data.params[0] ? run.data.params[0].value : '--'}</td>
-                                            <td>${run.data.params && run.data.params[1] ? run.data.params[1].value : '--'}</td>
+                                            <td>${run.data.params && run.data.params.find(obj => obj.key === "model_type")?.value ? run.data.params.find(obj => obj.key === "model_type")?.value : '--'}</td>
+                                            <td>${run.data.params && run.data.params.find(obj => obj.key === "dataset_level")?.value ? run.data.params.find(obj => obj.key === "dataset_level")?.value : '--'}</td>
                                             <td>${run.info.user_id}</td>
                                             <td>${metricsMap.accuracy ? (metricsMap.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
                                             <td>${((run.info.end_time-run.info.start_time) / 1000).toFixed(1)}s</td>
@@ -803,11 +2010,11 @@ function detectProblemType(metrics) {
     const isClassification = classificationMetrics.some(m => metricsStr.includes(m));
     
     // Regression metrics
-    const regressionMetrics = ['mse', 'rmse', 'mae', 'mape', 'r2_score', 'r_squared'];
+    const regressionMetrics = ['mse', 'rmse', 'mae', 'r2_score', 'r_squared'];
     const isRegression = regressionMetrics.some(m => metricsStr.includes(m));
     
     // Clustering metrics
-    const clusteringMetrics = ['silhouette_score', 'davies_bouldin_score', 'calinski_harabasz_score', 'inertia'];
+    const clusteringMetrics = ['silhouette_score', 'davies_bouldin_score', 'calinski_harabasz_score'];
     const isClustering = clusteringMetrics.some(m => metricsStr.includes(m));
     
     if (isClassification) return 'classification';
@@ -840,7 +2047,7 @@ function getPrimaryMetric(metrics, problemType) {
 
 function shouldMinimizeMetric(metric) {
     const metricsToMinimize = [
-        'loss', 'mse', 'rmse', 'mae', 'mape', 'error',
+        'loss', 'mse', 'rmse', 'mae', 'error',
         'davies_bouldin_score', 'inertia'
     ];
     return metricsToMinimize.some(m => metric.toLowerCase().includes(m));

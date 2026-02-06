@@ -757,6 +757,14 @@ select.form-control {
   height: 60px;
 }
 
+.view {
+    display: none !important;
+}
+
+.view.active {
+    display: block;
+}
+
 .nav-brand h1 {
   color: var(--color-primary);
   font-size: var(--font-size-xl);
@@ -813,11 +821,11 @@ select.form-control {
 }
 
 .view {
-  display: none;
+  display: none !important;
 }
 
 .view.active {
-  display: block;
+  display: block !important;
 }
 
 .page-header {
@@ -2325,6 +2333,42 @@ select.form-control {
 
 .run-info-card {
   animation: slideUp 0.3s ease-out backwards;
+}
+
+.view {
+  display: none !important;
+}
+
+.view.active {
+  display: block !important;
+}
+
+/* View Management - CRITICAL */
+.view {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.view.active {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Ensure child elements don't leak */
+.view:not(.active) * {
+  display: none !important;
+}
+
+.file-upload-area.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.file-upload-area.uploaded {
+  border-style: solid;
 }
 
 .run-info-card:nth-child(1) { animation-delay: 0.05s; }

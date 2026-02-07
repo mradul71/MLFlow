@@ -1611,113 +1611,150 @@ function renderArchitectureDiagram() {
   
   diagramContainer.innerHTML = `
     <div class="flowchart-diagram">
-      <!-- Top Layer: Model Training -->
+      <!-- Top Layer: User Configuration -->
       <div class="flow-row">
         <div class="flow-node training">
           <div class="node-header">
-            <span class="node-icon">🤖</span>
-            <span class="node-title">ML Model Training</span>
+            <span class="node-icon">⚙️</span>
+            <span class="node-title">① Select Models (Single Type)</span>
           </div>
           <div class="node-body">
-            <div class="node-detail">• Train models locally</div>
-            <div class="node-detail">• Compute metrics</div>
-            <div class="node-detail">• Generate SHAP values</div>
+            <div class="node-detail">Regression / Classification / Clustering</div>
           </div>
         </div>
       </div>
       
       <div class="flow-arrow">
         <div class="arrow-line"></div>
-        <div class="arrow-label">Log experiments</div>
         <div class="arrow-head">▼</div>
       </div>
       
-      <!-- Second Layer: MLflow Server -->
       <div class="flow-row">
         <div class="flow-node mlflow">
           <div class="node-header">
-            <span class="node-icon">🎯</span>
-            <span class="node-title">MLflow Tracking Server</span>
+            <span class="node-icon">📊</span>
+            <span class="node-title">② Select Metrics (Artifacts)</span>
           </div>
           <div class="node-body">
-            <div class="node-detail">• localhost:8080</div>
-            <div class="node-detail">• Store metadata (params, metrics)</div>
-            <div class="node-detail">• Manage artifacts (models, CSVs)</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="flow-split">
-        <div class="split-line left"></div>
-        <div class="split-line right"></div>
-      </div>
-      
-      <!-- Third Layer: API & Storage -->
-      <div class="flow-row split">
-        <div class="flow-node api">
-          <div class="node-header">
-            <span class="node-icon">🔗</span>
-            <span class="node-title">REST API</span>
-          </div>
-          <div class="node-body">
-            <div class="node-detail">• /experiments/search</div>
-            <div class="node-detail">• /runs/get</div>
-            <div class="node-detail">• /artifacts/list</div>
-          </div>
-        </div>
-        
-        <div class="flow-node storage">
-          <div class="node-header">
-            <span class="node-icon">🗄️</span>
-            <span class="node-title">Artifact Storage</span>
-          </div>
-          <div class="node-body">
-            <div class="node-detail">• Model files (.pkl)</div>
-            <div class="node-detail">• SHAP CSVs</div>
-            <div class="node-detail">• Visualizations</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="flow-merge">
-        <div class="merge-line left"></div>
-        <div class="merge-line right"></div>
-        <div class="arrow-label">Fetch data</div>
-        <div class="arrow-head">▼</div>
-      </div>
-      
-      <!-- Fourth Layer: Web Interface -->
-      <div class="flow-row">
-        <div class="flow-node ui">
-          <div class="node-header">
-            <span class="node-icon">🖥️</span>
-            <span class="node-title">Web Interface</span>
-          </div>
-          <div class="node-body">
-            <div class="node-detail">• Fetch via REST API</div>
-            <div class="node-detail">• Parse SHAP CSVs</div>
-            <div class="node-detail">• Generate visualizations</div>
+            <div class="node-detail">Per-model metric selection</div>
           </div>
         </div>
       </div>
       
       <div class="flow-arrow">
         <div class="arrow-line"></div>
-        <div class="arrow-label">Render UI</div>
         <div class="arrow-head">▼</div>
       </div>
       
-      <!-- Bottom Layer: User -->
+      <div class="flow-row">
+        <div class="flow-node api">
+          <div class="node-header">
+            <span class="node-icon">🎛️</span>
+            <span class="node-title">③ Configure Hyperparameters</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">Model-specific parameters</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <div class="flow-row">
+        <div class="flow-node storage">
+          <div class="node-header">
+            <span class="node-icon">📁</span>
+            <span class="node-title">④ Upload Dataset & Configure</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• Upload CSV</div>
+            <div class="node-detail">• Preprocessing (remove/fill nulls)</div>
+            <div class="node-detail">• Split ratio & method</div>
+            <div class="node-detail">• Target column selection</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-label">POST /run-batch-models</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- Model Execution Layer -->
+      <div class="flow-row">
+        <div class="flow-node ui">
+          <div class="node-header">
+            <span class="node-icon">🚀</span>
+            <span class="node-title">⑤ Multi-Model Execution</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">Sequential training of all selected models</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-label">Each model creates separate run</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- MLflow Logging -->
+      <div class="flow-row">
+        <div class="flow-node training">
+          <div class="node-header">
+            <span class="node-icon">🎯</span>
+            <span class="node-title">⑥ MLflow Tracking</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">• Log hyperparameters</div>
+            <div class="node-detail">• Log metrics</div>
+            <div class="node-detail">• Save model artifacts</div>
+            <div class="node-detail">• Store SHAP plots</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- SHAP Analysis -->
+      <div class="flow-row">
+        <div class="flow-node mlflow">
+          <div class="node-header">
+            <span class="node-icon">🔬</span>
+            <span class="node-title">⑦ SHAP Analysis</span>
+          </div>
+          <div class="node-body">
+            <div class="node-detail">Automatic for every run</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flow-arrow">
+        <div class="arrow-line"></div>
+        <div class="arrow-label">View results</div>
+        <div class="arrow-head">▼</div>
+      </div>
+      
+      <!-- Comparison Feature -->
       <div class="flow-row">
         <div class="flow-node user">
           <div class="node-header">
-            <span class="node-icon">👤</span>
-            <span class="node-title">User Dashboard</span>
+            <span class="node-icon">📈</span>
+            <span class="node-title">⑧ Experiment Detail & Comparison</span>
           </div>
           <div class="node-body">
-            <div class="node-detail">• View experiments & runs</div>
-            <div class="node-detail">• Analyze SHAP plots</div>
-            <div class="node-detail">• Compare models</div>
+            <div class="node-detail">• Compare all runs side-by-side</div>
+            <div class="node-detail">• View metrics & parameters</div>
+            <div class="node-detail">• Access SHAP analysis</div>
+            <div class="node-detail">• Download results</div>
           </div>
         </div>
       </div>
